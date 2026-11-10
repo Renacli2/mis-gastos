@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Mis Gastos</title>
+  <meta name="description" content="Registro y análisis de gastos personales">
+  <meta name="theme-color" content="#0f766e">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="stylesheet" href="css/app.css">
+  <script src="vendor/chart.umd.min.js" defer></script>
+  <script type="module" src="js/app.js"></script>
+</head>
+<body>
+  <main id="view"></main>
+
+  <nav class="nav">
+    <a href="#/" data-r=""><span>🏠</span>Inicio</a>
+    <a href="#/gastos" data-r="gastos"><span>📋</span>Gastos</a>
+    <a href="#/nuevo" data-r="nuevo" class="fab" aria-label="Nuevo gasto"><span>+</span></a>
+    <a href="#/analisis" data-r="analisis"><span>📊</span>Análisis</a>
+    <a href="#/ajustes" data-r="ajustes"><span>⚙️</span>Ajustes</a>
+  </nav>
+
+  <div id="toast" role="status" aria-live="polite"></div>
+</body>
+</html>
