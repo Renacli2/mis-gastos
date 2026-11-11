@@ -2,6 +2,7 @@ import * as db from '../db.js';
 import { S, cargar, catsDe, rubro, cat, medio, aARS } from '../store.js';
 import { $, esc, uid, money, hoy, toast, descargar, round2 } from '../util.js';
 import { vacio } from '../componentes.js';
+import { VERSION_ACTUAL, buscarVersion, aplicarActualizacion } from '../update.js';
 
 const TIPOS = { efectivo: 'Efectivo', debito: 'Débito', credito: 'Crédito (permite cuotas)', transferencia: 'Transferencia', billetera: 'Billetera virtual', otro: 'Otro' };
 const num = (v) => parseFloat(String(v).replace(/\./g, '').replace(',', '.')) || 0;
@@ -83,7 +84,14 @@ export function render(host, params) {
       <button class="btn peligro" data-a="borrar-todo">Borrar todos los datos</button>
       <small>${S.gastos.length} gastos registrados</small>`)}
 
-    <p class="pie">Mis Gastos · v1</p>`;
+    ${sec('app', '📲 Actualizaciones', `
+      <div class="version"><span>Versión instalada</span><b>${VERSION_ACTUAL}</b></div>
+      <p class="nota">La app busca versiones nuevas sola cada vez que la abrís. Actualizar no borra tus gastos.</p>
+      <button class="btn" data-a="buscar-upd">Buscar actualizaciones</button>
+      <div id="upd-estado"></div>
+      <button class="btn" data-a="forzar-upd">Reinstalar archivos de la app</button>`)}
+
+    <p class="pie">Mis Gastos ${VERSION_ACTUAL}</p>`;
 
   const ok = async (msg, rerender = true) => { await cargar(); if (msg) toast(msg); if (rerender) render(host, []); };
 
@@ -128,6 +136,25 @@ export function render(host, params) {
   el.addEventListener('click', async (e) => {
     const b = e.target.closest('button'); if (!b) return;
     const d = b.dataset;
+    if (d.a === 'buscar-upd') {
+      const est = el.querySelector('#upd-estado');
+      est.innerHTML = '<small>Buscando…</small>';
+      try {
+        const info = await buscarVersion();
+        est.innerHTML = info.hayNueva
+          ? `<p class="nueva">Hay una versión nueva: ${esc(info.version)}</p>${info.notas ? `<small>${esc(info.notas)}</small>` : ''}
+             <button class="btn primario" data-a="aplicar-upd">Actualizar a ${esc(info.version)}</button>`
+          : `<small>Ya tenés la última versión (${esc(info.version)}).</small>`;
+      } catch {
+        est.innerHTML = '<small>No se pudo consultar. Revisá tu conexión e intentá de nuevo.</small>';
+      }
+      return;
+    }
+    if (d.a === 'aplicar-upd') return aplicarActualizacion();
+    if (d.a === 'forzar-upd') {
+      if (!confirm('Se vuelven a descargar los archivos de la app. Tus gastos no se tocan. ¿Continuar?')) return;
+      return aplicarActualizacion();
+    }
     if (d.a === 'guardar-cot') {
       const v = num($('#cot').value);
       if (!v) return toast('Ingresá un valor');

@@ -1,5 +1,5 @@
 import { S, aARS, delMes, rubro } from '../store.js';
-import { $, $$, esc, money, pct, sum, sumarMeses, hoy, mesActual, toast } from '../util.js';
+import { $, $$, esc, money, pct, sum, sumarMeses, hoy, mesActual, toast, nombreMes } from '../util.js';
 import { selectorMes, itemGasto, vacio, barra } from '../componentes.js';
 import { pendientes, cargarPendiente, omitirPendiente } from '../recurrentes.js';
 import { cargar } from '../store.js';
@@ -9,8 +9,32 @@ export function render(el) {
   const gm = delMes(mes);
   const total = sum(gm.map(aARS));
   const usd = sum(gm.filter((g) => g.moneda === 'USD').map((g) => g.monto));
-  const prev = sum(delMes(sumarMeses(mes, -1)).map(aARS));
-  const varPrev = prev > 0 ? ((total - prev) / prev) * 100 : null;
+  const mesPrev = sumarMeses(mes, -1);
+  const gPrev = delMes(mesPrev);
+  const prev = sum(gPrev.map(aARS));
+
+  // Ritmo: lo gastado hasta hoy vs. lo que llevabas el mes anterior al mismo día
+  const esActual = mes === mesActual();
+  const dia = esActual ? +hoy().slice(8) : 31;
+  const totalHasta = esActual ? sum(gm.filter((g) => g.fecha <= hoy()).map(aARS)) : total;
+  const prevHasta = sum(gPrev.filter((g) => +g.fecha.slice(8) <= dia).map(aARS));
+  const nombrePrev = nombreMes(mesPrev).split(' ')[0];
+  const dif = totalHasta - prevHasta;
+  const varRitmo = prevHasta > 0 ? (dif / prevHasta) * 100 : null;
+  const ritmo = prev > 0 ? `
+      <div class="ritmo">
+        <div class="pista" role="img" aria-label="Gastado: ${Math.round((totalHasta / prev) * 100)}% del total de ${nombrePrev}">
+          <div class="pista-fill" style="width:${Math.min(totalHasta / prev, 1) * 100}%"></div>
+          ${esActual ? `<div class="pista-marca" style="left:${Math.min(prevHasta / prev, 1) * 100}%"></div>` : ''}
+        </div>
+        <div class="ritmo-txt">
+          <span>${esActual
+            ? `Llevás <b>${money(Math.abs(dif))} ${dif > 0 ? 'más' : 'menos'}</b> que en ${nombrePrev} a esta altura del mes.`
+            : `${nombrePrev[0].toUpperCase() + nombrePrev.slice(1)} cerró en ${money(prev)}.`}</span>
+          ${varRitmo !== null ? `<span class="delta">${pct(varRitmo)}</span>` : ''}
+        </div>
+        ${esActual ? `<div class="leyenda"><span><i></i>Este mes</span><span><i class="marca"></i>${esc(nombrePrev)} al día ${dia}</span></div>` : ''}
+      </div>` : '';
   const pend = pendientes();
   const hayUSD = S.gastos.some((g) => g.moneda === 'USD');
 
@@ -27,11 +51,11 @@ export function render(el) {
 
   el.innerHTML = `
     ${selectorMes()}
-    <section class="card hero">
-      <small>Gastado en el mes</small>
+    <section class="hero">
+      <small>${esActual ? 'Gastaste este mes' : 'Gastaste en el mes'}</small>
       <div class="total">${money(total)}</div>
-      ${usd ? `<small>incluye ${money(usd, 'USD')} convertidos a $${S.cot || '?'}</small>` : ''}
-      ${varPrev !== null ? `<div class="var ${varPrev > 0 ? 'sube' : 'baja'}">${pct(varPrev)} vs. mes anterior (${money(prev)})</div>` : ''}
+      ${usd ? `<small>Incluye ${money(usd, 'USD')} a $${S.cot || '?'} por dólar</small>` : ''}
+      ${ritmo}
     </section>
 
     ${hayUSD && !S.cot ? `<a class="card aviso" href="#/ajustes">⚠️ Cargá la cotización del dólar en Ajustes para convertir tus gastos en USD.</a>` : ''}

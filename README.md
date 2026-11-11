@@ -21,7 +21,10 @@ y abrir http://localhost:8765
 1. Publicar la carpeta en un hosting HTTPS (por ejemplo GitHub Pages).
 2. Abrir la URL en Chrome para Android → menú ⋮ → **Instalar app** (o "Agregar a pantalla principal").
 
-## Actualizar
-Después de modificar archivos, subí `VERSION` en `sw.js` y volvé a publicar.
+## Publicar una actualización
+1. Subí el número en `version.js` (por ejemplo `1.1.0` → `1.2.0`) y escribí en `APP_NOTAS` qué cambió.
+2. Hacé commit y push a `main`; GitHub Pages la publica en 1–2 minutos.
+
+En el celular, la app busca versiones nuevas sola al abrirse y al volver a ella. Si encuentra una, muestra un cartel con el botón **Actualizar**. También se puede buscar a mano en **Ajustes → Actualizaciones**. Actualizar no borra los gastos.
 
 Los datos **no** viajan al servidor: hacé backups periódicos desde Ajustes → Backup.

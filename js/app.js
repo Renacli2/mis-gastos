@@ -2,6 +2,7 @@ import { S, cargar } from './store.js';
 import { seedSiHaceFalta } from './seed.js';
 import { $, $$, sumarMeses, toast } from './util.js';
 import { destruirCharts } from './charts.js';
+import { iniciarActualizaciones } from './update.js';
 import * as inicio from './views/inicio.js';
 import * as gastos from './views/gastos.js';
 import * as form from './views/form.js';
@@ -41,6 +42,7 @@ async function init() {
   await cargar();
   window.addEventListener('hashchange', ruta);
   await ruta();
+  iniciarActualizaciones();
 }
 
 init().catch((err) => {

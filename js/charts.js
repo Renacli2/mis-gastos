@@ -2,9 +2,9 @@ let activos = [];
 
 export function chart(canvas, config) {
   const css = getComputedStyle(document.documentElement);
-  Chart.defaults.color = css.getPropertyValue('--texto2').trim();
+  Chart.defaults.color = css.getPropertyValue('--tinta2').trim();
   Chart.defaults.borderColor = css.getPropertyValue('--linea').trim();
-  Chart.defaults.font.family = 'system-ui, -apple-system, Roboto, sans-serif';
+  Chart.defaults.font.family = css.getPropertyValue('--texto-f').trim();
   const c = new Chart(canvas, config);
   activos.push(c);
   return c;
