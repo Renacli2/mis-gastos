@@ -1,5 +1,5 @@
 const DB_NAME = 'mis-gastos';
-const VERSION = 1;
+export const VERSION = 2;
 export const STORES = {
   gastos: 'id',
   rubros: 'id',
@@ -8,6 +8,8 @@ export const STORES = {
   presupuestos: 'rubroId',
   recurrentes: 'id',
   config: 'clave',
+  vehiculos: 'id',
+  servicios: 'id',
 };
 
 let dbp;
@@ -23,7 +25,11 @@ function open() {
         }
       }
     };
-    r.onsuccess = () => res(r.result);
+    r.onsuccess = () => {
+      // Si otra pestaña abre una versión más nueva del esquema, soltar la conexión para no bloquearla.
+      r.result.onversionchange = () => r.result.close();
+      res(r.result);
+    };
     r.onerror = () => rej(r.error);
   }));
 }
@@ -78,6 +84,10 @@ export async function importAll(obj) {
   if (!obj || obj.app !== 'mis-gastos' || !obj.data || !Array.isArray(obj.data.gastos)) {
     throw new Error('El archivo no es un backup válido de Mis Gastos');
   }
+  if (obj.version > VERSION) {
+    throw new Error('El backup es de una versión más nueva de la app. Actualizá la app y probá de nuevo.');
+  }
+  // Los backups viejos no traen las tablas nuevas: quedan vacías y la migración completa lo que falte.
   for (const s of Object.keys(STORES)) {
     await clear(s);
     if (Array.isArray(obj.data[s])) await putMany(s, obj.data[s]);

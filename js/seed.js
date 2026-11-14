@@ -43,6 +43,31 @@ export async function migrarPaleta() {
   await db.setConfig('paleta', 2);
 }
 
+export const TIPOS_SERVICIO = [
+  'Cambio de aceite', 'Filtros', 'Frenos', 'Neumáticos', 'Batería', 'Correa de distribución', 'Service general', 'Otro',
+];
+// Categorías con comportamiento especial. Se reconocen por `tipo`, no por nombre, así se pueden renombrar.
+const CATS_ESPECIALES = { 'Combustible': 'combustible', 'Mantenimiento auto': 'mantenimiento' };
+
+/**
+ * Migración de datos al esquema 2 (módulo de vehículos). No modifica ningún gasto:
+ * marca las categorías de combustible y mantenimiento (o las crea si no están) y carga los tipos de servicio.
+ */
+export async function migrarDatos() {
+  if (await db.getConfig('datos', 1) >= 2) return;
+  const rubros = await db.all('rubros');
+  const cats = await db.all('categorias');
+  for (const [nombre, tipo] of Object.entries(CATS_ESPECIALES)) {
+    if (cats.some((c) => c.tipo === tipo)) continue;
+    const existente = cats.find((c) => c.nombre === nombre);
+    if (existente) { await db.put('categorias', { ...existente, tipo }); continue; }
+    const r = rubros.find((x) => x.nombre === 'Transporte') || rubros[0];
+    if (r) await db.put('categorias', { id: uid(), rubroId: r.id, nombre, tipo, orden: 99 });
+  }
+  if (!(await db.getConfig('tiposServicio', null))) await db.setConfig('tiposServicio', TIPOS_SERVICIO);
+  await db.setConfig('datos', 2);
+}
+
 export async function seedSiHaceFalta() {
   if (await db.getConfig('seeded', false)) return;
   const rubros = [];
@@ -50,7 +75,7 @@ export async function seedSiHaceFalta() {
   RUBROS.forEach(([nombre, icono, color, cs], i) => {
     const id = uid();
     rubros.push({ id, nombre, icono, color, orden: i });
-    cs.forEach((c, j) => cats.push({ id: uid(), rubroId: id, nombre: c, orden: j }));
+    cs.forEach((c, j) => cats.push({ id: uid(), rubroId: id, nombre: c, orden: j, ...(CATS_ESPECIALES[c] ? { tipo: CATS_ESPECIALES[c] } : {}) }));
   });
   await db.putMany('rubros', rubros);
   await db.putMany('categorias', cats);

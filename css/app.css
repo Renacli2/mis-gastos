@@ -333,3 +333,12 @@ ul.cats { list-style: none; padding: 0 0 0 14px; margin: 4px 0; }
 .version b { font-family: var(--display); font-stretch: 62%; font-size: 30px; font-weight: 800; }
 #upd-estado { margin-top: 10px; }
 #upd-estado .nueva { color: var(--enlace); font-weight: 700; }
+
+/* Vehículos */
+.cab { display: flex; align-items: flex-end; justify-content: space-between; gap: 8px; }
+.cab .icono-btn { margin-bottom: 18px; }
+.selmes .flechas { gap: 4px; }
+.selmes .icono-btn { width: 36px; height: 36px; }
+.item.inactivo { opacity: .55; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.grid2 .campo { min-width: 0; }

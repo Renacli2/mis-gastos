@@ -3,6 +3,7 @@ import { S, cargar, catsDe, rubro, cat, medio, aARS } from '../store.js';
 import { $, esc, uid, money, hoy, toast, descargar, round2 } from '../util.js';
 import { vacio } from '../componentes.js';
 import { VERSION_ACTUAL, buscarVersion, aplicarActualizacion } from '../update.js';
+import { migrarPaleta, migrarDatos } from '../seed.js';
 
 const TIPOS = { efectivo: 'Efectivo', debito: 'Débito', credito: 'Crédito (permite cuotas)', transferencia: 'Transferencia', billetera: 'Billetera virtual', otro: 'Otro' };
 const num = (v) => parseFloat(String(v).replace(/\./g, '').replace(',', '.')) || 0;
@@ -126,6 +127,8 @@ export function render(host, params) {
         const n = obj?.data?.gastos?.length ?? 0;
         if (!confirm(`Restaurar backup con ${n} gastos? Se reemplazarán TODOS los datos actuales.`)) return;
         await db.importAll(obj);
+        await migrarPaleta();
+        await migrarDatos();
         await ok('Backup restaurado');
       } catch (err) { toast(err.message || 'No se pudo leer el archivo'); }
     }

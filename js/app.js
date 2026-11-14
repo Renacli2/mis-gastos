@@ -1,5 +1,5 @@
 import { S, cargar } from './store.js';
-import { seedSiHaceFalta, migrarPaleta } from './seed.js';
+import { seedSiHaceFalta, migrarPaleta, migrarDatos } from './seed.js';
 import { $, $$, sumarMeses, toast } from './util.js';
 import { destruirCharts } from './charts.js';
 import { iniciarActualizaciones } from './update.js';
@@ -8,8 +8,9 @@ import * as gastos from './views/gastos.js';
 import * as form from './views/form.js';
 import * as analisis from './views/analisis.js';
 import * as ajustes from './views/ajustes.js';
+import * as vehiculos from './views/vehiculos.js';
 
-const RUTAS = { '': inicio, gastos, nuevo: form, editar: form, analisis, ajustes };
+const RUTAS = { '': inicio, gastos, nuevo: form, editar: form, analisis, ajustes, vehiculos };
 
 async function ruta() {
   const [path, ...params] = location.hash.replace(/^#\/?/, '').split('/');
@@ -40,6 +41,7 @@ async function init() {
   if (navigator.storage?.persist) navigator.storage.persist().catch(() => {});
   await seedSiHaceFalta();
   await migrarPaleta();
+  await migrarDatos();
   await cargar();
   window.addEventListener('hashchange', ruta);
   await ruta();

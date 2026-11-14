@@ -10,6 +10,7 @@ export function selectorMes() {
     <div class="flechas">
       <button class="icono-btn" data-mes="-1" aria-label="Mes anterior">${flecha('M15 5l-7 7 7 7')}</button>
       <button class="icono-btn" data-mes="1" aria-label="Mes siguiente">${flecha('M9 5l7 7-7 7')}</button>
+      ${engranaje}
     </div>
   </div>`;
 }
@@ -38,3 +39,5 @@ export function barra(valor, tope) {
   const cls = p >= 100 ? 'rojo' : p >= 80 ? 'amarillo' : 'verde';
   return `<div class="barra"><div class="barra-fill ${cls}" style="width:${Math.min(p, 100)}%"></div></div>`;
 }
+
+export const engranaje = `<a class="icono-btn" href="#/ajustes" aria-label="Ajustes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg></a>`;
