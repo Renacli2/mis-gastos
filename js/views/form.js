@@ -33,6 +33,8 @@ export function render(el, params) {
   const editId = params[0];
   const orig = editId ? S.gastos.find((g) => g.id === editId) : null;
   if (editId && !orig) { location.hash = '#/gastos'; return; }
+  // El gasto de un servicio se edita desde el servicio, para que no queden desfasados.
+  if (orig?.servicioId && S.servicios.some((s) => s.id === orig.servicioId)) { location.replace(`#/servicios/${orig.servicioId}`); return; }
 
   const f = orig
     ? { ...orig }

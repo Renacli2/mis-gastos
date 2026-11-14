@@ -7,8 +7,8 @@ const ARCHIVOS = [
   'fonts/anybody.woff2', 'fonts/schibsted.woff2',
   'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png',
   'js/app.js', 'js/db.js', 'js/util.js', 'js/store.js', 'js/seed.js', 'js/charts.js', 'js/update.js',
-  'js/componentes.js', 'js/recurrentes.js', 'js/combustible.js', 'js/consumo.js',
-  'js/views/vehiculos.js', 'js/views/inicio.js', 'js/views/gastos.js', 'js/views/form.js', 'js/views/analisis.js', 'js/views/ajustes.js',
+  'js/componentes.js', 'js/recurrentes.js', 'js/combustible.js', 'js/consumo.js', 'js/servicios.js',
+  'js/views/vehiculos.js', 'js/views/servicios.js', 'js/views/inicio.js', 'js/views/gastos.js', 'js/views/form.js', 'js/views/analisis.js', 'js/views/ajustes.js',
 ];
 
 self.addEventListener('install', (e) => {

@@ -24,6 +24,7 @@ export function itemGasto(g) {
     g.cuotaTotal > 1 ? `<span class="badge">cuota ${g.cuotaNro}/${g.cuotaTotal}</span>` : '',
     g.litros > 0 ? `<span class="badge">${String(g.litros).replace('.', ',')} L${vehiculo(g.vehiculoId) ? ' · ' + esc(vehiculo(g.vehiculoId).alias) : ''}</span>` : '',
     g.recurrenteId ? '<span class="badge">fijo</span>' : '',
+    g.servicioId ? '<span class="badge">servicio</span>' : '',
     g.prescindible ? '<span class="badge prescindible">prescindible</span>' : '',
   ].join('');
   return `<a class="item" href="#/editar/${g.id}">

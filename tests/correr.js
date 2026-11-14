@@ -2,6 +2,7 @@
 import { suites } from './lib.js';
 import './combustible.test.js';
 import './consumo.test.js';
+import './servicios.test.js';
 
 const salida = document.getElementById('salida');
 let ok = 0, mal = 0;

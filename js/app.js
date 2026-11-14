@@ -9,14 +9,15 @@ import * as form from './views/form.js';
 import * as analisis from './views/analisis.js';
 import * as ajustes from './views/ajustes.js';
 import * as vehiculos from './views/vehiculos.js';
+import * as servicios from './views/servicios.js';
 
-const RUTAS = { '': inicio, gastos, nuevo: form, editar: form, analisis, ajustes, vehiculos };
+const RUTAS = { '': inicio, gastos, nuevo: form, editar: form, analisis, ajustes, vehiculos, servicios };
 
 async function ruta() {
   const [path, ...params] = location.hash.replace(/^#\/?/, '').split('/');
   const vista = RUTAS[path] || inicio;
   destruirCharts();
-  $$('.nav a').forEach((a) => a.classList.toggle('activo', a.dataset.r === (path === 'editar' ? 'gastos' : path)));
+  $$('.nav a').forEach((a) => a.classList.toggle('activo', a.dataset.r === ({ editar: 'gastos', servicios: 'vehiculos' }[path] ?? path)));
   const el = $('#view');
   el.replaceChildren();
   try {

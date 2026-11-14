@@ -2,8 +2,9 @@ import * as db from '../db.js';
 import { S, cargar, vehiculo } from '../store.js';
 import { cargasDe } from '../combustible.js';
 import { resumenConsumo } from '../consumo.js';
+import { historial } from '../servicios.js';
 import { chart } from '../charts.js';
-import { $, $$, esc, uid, toast } from '../util.js';
+import { $, $$, esc, uid, toast, money } from '../util.js';
 import { vacio, engranaje, itemGasto } from '../componentes.js';
 
 export const COMBUSTIBLES = ['Nafta', 'Nafta premium', 'Diésel', 'GNC', 'Eléctrico', 'Híbrido'];
@@ -127,7 +128,14 @@ function ficha(el, id) {
   const cargas = cargasDe(S.gastos, v.id);
   const r = resumenConsumo(cargas);
   const detalle = [[v.marca, v.modelo, v.anio].filter(Boolean).join(' '), v.patente, v.combustible].filter(Boolean).join(' · ');
-  const ultimas = S.gastos.filter((g) => g.vehiculoId === v.id).slice(0, 5);
+  const ultimas = S.gastos.filter((g) => g.vehiculoId === v.id && g.litros > 0).slice(0, 5);
+  const servicios = historial(S.servicios, v.id);
+  const filaServicio = (s) => `<a class="item" href="#/servicios/${s.id}">
+      <span class="item-txt"><b>${esc(s.tipo)}</b>
+        <small>${[fechaCorta(s.fecha), km(s.odometro), s.taller].filter(Boolean).map(esc).join(' · ')}</small>
+        ${s.notas ? `<small>${esc(s.notas)}</small>` : ''}</span>
+      <span class="item-der"><span class="item-monto">${s.costo > 0 ? money(s.costo) : '—'}</span>${s.costo > 0 ? '' : '<small>sin costo</small>'}</span>
+    </a>`;
 
   el.innerHTML = `
     <a class="link volver" href="#/vehiculos">‹ Vehículos</a>
@@ -141,6 +149,12 @@ function ficha(el, id) {
     </section>
 
     <section class="sec"><h2>Consumo</h2>${bloqueConsumo(r)}</section>
+
+    <section class="sec">
+      <div class="card-tit"><h2>Servicios</h2>${v.activo === false ? '' : `<a class="btn chico" href="#/servicios/nuevo/${v.id}">Registrar servicio</a>`}</div>
+      ${servicios.length ? `<div class="lista">${servicios.map(filaServicio).join('')}</div>`
+        : vacio('Todavía no registraste servicios para este vehículo.')}
+    </section>
 
     <section class="sec"><div class="card-tit"><h2>Últimas cargas</h2></div>
       ${ultimas.length ? `<div class="lista">${ultimas.map(itemGasto).join('')}</div>` : vacio('Sin cargas registradas.')}

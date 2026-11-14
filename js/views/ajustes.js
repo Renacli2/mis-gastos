@@ -76,6 +76,13 @@ export function render(host, params) {
         <select id="nm-tipo">${Object.entries(TIPOS).map(([k, v]) => `<option value="${k}">${v}</option>`).join('')}</select>
         <button class="btn chico" data-a="medio-nuevo">Agregar</button></div>`)}
 
+    ${sec('tipos', 'Tipos de servicio del vehículo', `
+      <p class="nota">Lista que aparece al registrar un servicio. Quitar un tipo no cambia los servicios ya cargados.</p>
+      ${S.tiposServicio.map((t, i) => `<div class="fila"><span>${esc(t)}</span>
+        <button class="icono-btn" data-tipo-borrar="${i}" aria-label="Quitar ${esc(t)}">✕</button></div>`).join('')}
+      <div class="inline nuevo"><input class="txt" id="nt-nombre" maxlength="40" placeholder="Nuevo tipo (ej: Alineación y balanceo)">
+        <button class="btn chico" data-a="tipo-nuevo">Agregar</button></div>`)}
+
     ${sec('datos', 'Backup y exportación', `
       <p class="nota">Tus datos se guardan solo en este celular. Hacé un backup de vez en cuando y guardalo en Drive o similar.</p>
       <button class="btn" data-a="exp-json">Descargar backup (JSON)</button>
@@ -167,7 +174,19 @@ export function render(host, params) {
       if (!confirm('¿Borrar este gasto fijo? Los gastos ya cargados se mantienen.')) return;
       await db.del('recurrentes', d.recBorrar); return ok('Eliminado');
     }
+    if (d.tipoBorrar) {
+      if (S.tiposServicio.length <= 1) return toast('Tiene que quedar al menos un tipo de servicio');
+      await db.setConfig('tiposServicio', S.tiposServicio.filter((_, i) => i !== +d.tipoBorrar));
+      return ok('Tipo quitado');
+    }
+    if (d.a === 'tipo-nuevo') {
+      const nombre = $('#nt-nombre').value.trim(); if (!nombre) return;
+      if (S.tiposServicio.some((t) => t.toLowerCase() === nombre.toLowerCase())) return toast('Ese tipo ya está en la lista');
+      await db.setConfig('tiposServicio', [...S.tiposServicio, nombre]);
+      return ok('Tipo agregado');
+    }
     if (d.rubroBorrar) {
+      if (catsDe(d.rubroBorrar).some((c) => c.tipo)) return toast('No se puede: contiene la categoría de combustible o de mantenimiento de vehículos.');
       const n = usosRubro(d.rubroBorrar);
       if (n) return toast(`No se puede: tiene ${n} gastos. Renombralo o reasigná esos gastos.`);
       if (!confirm(`¿Borrar el rubro “${rubro(d.rubroBorrar).nombre}” y sus categorías?`)) return;
@@ -177,6 +196,7 @@ export function render(host, params) {
       return ok('Rubro eliminado');
     }
     if (d.catBorrar) {
+      if (cat(d.catBorrar).tipo) return toast('Esta categoría la usa el módulo de vehículos. Podés renombrarla, pero no borrarla.');
       const n = usosCat(d.catBorrar);
       if (n && !confirm(`La categoría tiene ${n} gastos; quedarán sin categoría. ¿Borrar igual?`)) return;
       if (!n && !confirm('¿Borrar categoría?')) return;
