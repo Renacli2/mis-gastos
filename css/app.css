@@ -342,3 +342,9 @@ ul.cats { list-style: none; padding: 0 0 0 14px; margin: 4px 0; }
 .item.inactivo { opacity: .55; }
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .grid2 .campo { min-width: 0; }
+.bloque { background: var(--sup); border-radius: var(--r-forma); padding: 16px; margin-top: 20px; }
+.bloque .grid2 .campo { margin-top: 16px; }
+.bloque #comb-info { display: block; margin-top: 8px; min-height: 18px; }
+.bloque input[type=text] { background: var(--fondo); }
+.bloque .chip { background: var(--fondo); }
+.bloque .chip.sel { background: var(--pino); }

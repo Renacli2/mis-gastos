@@ -1,6 +1,20 @@
 import * as db from '../db.js';
-import { S, cargar, catsDe, medio } from '../store.js';
+import { S, cargar, catsDe, medio, cat, vehiculo, vehiculosActivos } from '../store.js';
 import { $, $$, esc, uid, hoy, mesDe, sumarMeses, fechaEnMes, round2, money, toast } from '../util.js';
+import { cargasDe, validarCarga, precioPorLitro, odometroVehiculo } from '../combustible.js';
+
+const SIN_VEHICULO = 'ninguno';
+const km = (n) => `${Math.round(n || 0).toLocaleString('es-AR')} km`;
+const parseLitros = (v) => parseFloat(String(v).trim().replace(',', '.')) || 0;
+const parseKm = (v) => { const s = String(v).replace(/\D/g, ''); return s === '' ? NaN : parseInt(s, 10); };
+
+/** Deja el odómetro del vehículo al día después de guardar o borrar una de sus cargas. */
+async function actualizarOdometro(vehiculoId, odoPrevio = null) {
+  const v = (await db.all('vehiculos')).find((x) => x.id === vehiculoId);
+  if (!v) return;
+  const nuevo = odometroVehiculo(v.odometro, cargasDe(await db.all('gastos'), vehiculoId), odoPrevio);
+  if (nuevo !== v.odometro) await db.put('vehiculos', { ...v, odometro: nuevo });
+}
 
 /** Rubros ordenados por uso en los últimos 90 días (los más usados primero). */
 function rubrosPorUso() {
@@ -28,6 +42,13 @@ export function render(el, params) {
         descripcion: '', prescindible: false, cuotas: 1, recurrente: false,
       };
 
+  // Combustible: vehículos elegibles (los activos, más el del gasto que se edita aunque esté inactivo)
+  const vehs = vehiculosActivos();
+  if (orig?.vehiculoId && !vehs.some((v) => v.id === orig.vehiculoId) && vehiculo(orig.vehiculoId)) vehs.push(vehiculo(orig.vehiculoId));
+  const ultimaCarga = S.gastos.find((g) => g.vehiculoId && vehs.some((v) => v.id === g.vehiculoId));
+  f.vehiculoId = orig ? (orig.vehiculoId || SIN_VEHICULO) : (ultimaCarga?.vehiculoId || vehs[0]?.id || SIN_VEHICULO);
+  f.tanqueLleno = orig?.tanqueLleno ?? true;
+
   el.innerHTML = `
     <h1 class="titulo">${orig ? 'Editar gasto' : 'Cargar gasto'}</h1>
     <form id="form" class="form" autocomplete="off">
@@ -44,6 +65,24 @@ export function render(el, params) {
 
       <div class="campo"><span>Rubro</span><div class="chips" id="rubros"></div></div>
       <div class="campo"><span>Categoría</span><div class="chips" id="cats"></div></div>
+
+      <div id="comb-wrap" class="bloque" hidden>
+        ${vehs.length ? `
+        <div class="campo" style="margin-top:0"><span>Vehículo</span><div class="chips" id="vehs"></div></div>
+        <div id="comb-datos">
+          <div class="grid2">
+            <label class="campo">Litros
+              <input id="litros" type="text" inputmode="decimal" placeholder="Ej: 35,5" value="${orig?.litros ? String(orig.litros).replace('.', ',') : ''}"></label>
+            <label class="campo">Odómetro (km)
+              <input id="odo" type="text" inputmode="numeric" value="${orig?.odometro ?? ''}"></label>
+          </div>
+          <small id="comb-info"></small>
+          <label class="switch"><input type="checkbox" id="lleno" ${f.tanqueLleno ? 'checked' : ''}>
+            <span><b>Tanque lleno</b><small>Marcalo si llenaste el tanque. Se usa para calcular el consumo.</small></span></label>
+        </div>`
+        : '<p class="nota" style="margin:0">Para registrar litros y odómetro, primero <a class="link" href="#/vehiculos/nuevo">agregá un vehículo</a>.</p>'}
+      </div>
+
       <div class="campo"><span>Medio de pago</span><div class="chips" id="medios"></div></div>
 
       <div id="cuotas-wrap" class="campo">
@@ -84,17 +123,38 @@ export function render(el, params) {
     if (/,/.test(v) || /^\d{1,3}(\.\d{3})+$/.test(v)) return parse(v);
     return parseFloat(v) || 0;
   };
+  // Un gasto histórico en cuotas no se puede convertir en carga: su monto es solo una parte de la compra.
+  const esCombustible = () => cat(f.categoriaId).tipo === 'combustible' && !orig?.cuotaGrupo;
+  /** Es una carga con datos de consumo: categoría de combustible y un vehículo elegido. */
+  const esCargaVeh = () => esCombustible() && vehs.length > 0 && f.vehiculoId !== SIN_VEHICULO;
   const pintarCuotas = () => {
-    const esCredito = medio(f.medioId).tipo === 'credito';
+    // El combustible va siempre en un pago: una carga partida en cuotas rompería el cálculo de consumo.
+    const esCredito = medio(f.medioId).tipo === 'credito' && !esCombustible();
     $('#cuotas-wrap').hidden = !esCredito || !!orig;
-    const n = Math.max(1, parseInt($('#cuotas').value) || 1);
+    const n = esCredito ? Math.max(1, parseInt($('#cuotas').value) || 1) : 1;
     const m = parseMonto();
     $('#cuota-info').textContent = n > 1 && m ? `${n} cuotas de ${money(m / n, f.moneda)}` : '';
     const rec = $('#rec-wrap');
-    if (rec) rec.hidden = esCredito && n > 1;
+    if (rec) rec.hidden = (esCredito && n > 1) || esCombustible();
+  };
+  const pintarCombInfo = () => {
+    if (!esCargaVeh()) return;
+    const v = vehiculo(f.vehiculoId);
+    const ppl = precioPorLitro(parseMonto(), parseLitros($('#litros').value));
+    $('#comb-info').textContent = [
+      ppl ? `${money(ppl, f.moneda)} por litro` : '',
+      v ? `Odómetro de ${v.alias}: ${km(v.odometro)}` : '',
+    ].filter(Boolean).join(' · ');
+  };
+  const pintarComb = () => {
+    $('#comb-wrap').hidden = !esCombustible();
+    if (!vehs.length) return;
+    chips('#vehs', [...vehs.map((v) => ({ id: v.id, nombre: v.alias })), { id: SIN_VEHICULO, nombre: 'Ninguno' }], f.vehiculoId, 'veh');
+    $('#comb-datos').hidden = f.vehiculoId === SIN_VEHICULO;
+    pintarCombInfo();
   };
 
-  pintarRubros(); pintarCats(); pintarMedios(); pintarMoneda(); pintarCuotas();
+  pintarRubros(); pintarCats(); pintarMedios(); pintarMoneda(); pintarComb(); pintarCuotas();
 
   $('#moneda').addEventListener('click', (e) => {
     const b = e.target.closest('button'); if (!b) return;
@@ -105,12 +165,19 @@ export function render(el, params) {
     f.rubroId = b.dataset.rubro;
     const cs = catsDe(f.rubroId);
     f.categoriaId = cs.length === 1 ? cs[0].id : null;
-    pintarRubros(); pintarCats();
+    pintarRubros(); pintarCats(); pintarComb(); pintarCuotas();
   });
   $('#cats').addEventListener('click', (e) => {
     const b = e.target.closest('[data-cat]'); if (!b) return;
-    f.categoriaId = b.dataset.cat; pintarCats();
+    f.categoriaId = b.dataset.cat; pintarCats(); pintarComb(); pintarCuotas();
   });
+  $('#vehs')?.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-veh]'); if (!b) return;
+    f.vehiculoId = b.dataset.veh; pintarComb();
+  });
+  $('#litros')?.addEventListener('input', pintarCombInfo);
+  $('#monto').addEventListener('input', pintarCombInfo);
+  $('#moneda').addEventListener('click', pintarCombInfo);
   $('#medios').addEventListener('click', (e) => {
     const b = e.target.closest('[data-medio]'); if (!b) return;
     f.medioId = b.dataset.medio; pintarMedios(); pintarCuotas();
@@ -133,17 +200,32 @@ export function render(el, params) {
       rubroId: f.rubroId, categoriaId: f.categoriaId, medioId: f.medioId,
       descripcion: $('#desc').value.trim(), prescindible: $('#presc').checked,
     };
+
+    // Datos de consumo: van en el mismo gasto, no en un registro aparte.
+    const carga = { vehiculoId: null, litros: null, odometro: null, tanqueLleno: null };
+    if (esCargaVeh()) {
+      Object.assign(carga, {
+        vehiculoId: f.vehiculoId, litros: round2(parseLitros($('#litros').value)),
+        odometro: parseKm($('#odo').value), tanqueLleno: $('#lleno').checked,
+      });
+      const otras = cargasDe(S.gastos, carga.vehiculoId).filter((g) => g.id !== orig?.id);
+      const error = validarCarga({ monto, litros: carga.litros, odometro: carga.odometro, fecha: base.fecha }, otras);
+      if (error) return toast(error);
+    }
+    Object.assign(base, carga);
     if (f.moneda === 'USD' && !S.cot) await db.setConfig('cotizacion', cot);
 
     if (orig) {
       await db.put('gastos', { ...orig, ...base, monto });
+      if (orig.vehiculoId && orig.vehiculoId !== carga.vehiculoId) await actualizarOdometro(orig.vehiculoId, orig.odometro);
+      if (carga.vehiculoId) await actualizarOdometro(carga.vehiculoId, orig.vehiculoId === carga.vehiculoId ? orig.odometro : null);
       await cargar();
       toast('Gasto actualizado');
       history.back();
       return;
     }
 
-    const n = medio(f.medioId).tipo === 'credito' ? Math.max(1, Math.min(60, parseInt($('#cuotas').value) || 1)) : 1;
+    const n = medio(f.medioId).tipo === 'credito' && !esCombustible() ? Math.max(1, Math.min(60, parseInt($('#cuotas').value) || 1)) : 1;
     const ahora = Date.now();
     if (n > 1) {
       const grupo = uid();
@@ -159,7 +241,7 @@ export function render(el, params) {
     } else {
       const id = uid();
       let recurrenteId = null;
-      if ($('#rec')?.checked) {
+      if ($('#rec')?.checked && !esCombustible()) {
         recurrenteId = uid();
         await db.put('recurrentes', {
           id: recurrenteId, descripcion: base.descripcion || (S.categorias.find((c) => c.id === base.categoriaId)?.nombre ?? 'Gasto fijo'),
@@ -169,6 +251,7 @@ export function render(el, params) {
         });
       }
       await db.put('gastos', { ...base, id, monto, creado: ahora, recurrenteId });
+      if (carga.vehiculoId) await actualizarOdometro(carga.vehiculoId);
     }
     S.mes = mesDe(base.fecha);
     await cargar();
@@ -188,6 +271,7 @@ export function render(el, params) {
       if (!confirm('¿Eliminar este gasto?')) return;
       await db.del('gastos', orig.id);
     }
+    if (orig.vehiculoId) await actualizarOdometro(orig.vehiculoId, orig.odometro);
     await cargar();
     toast('Eliminado');
     history.back();

@@ -1,4 +1,4 @@
-import { S, rubro, cat, medio } from './store.js';
+import { S, rubro, cat, medio, vehiculo } from './store.js';
 import { esc, money, nombreMes } from './util.js';
 
 const flecha = (d) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="${d}"/></svg>`;
@@ -22,6 +22,7 @@ export function itemGasto(g) {
   const sub = g.descripcion && c.nombre ? c.nombre : r.nombre;
   const badges = [
     g.cuotaTotal > 1 ? `<span class="badge">cuota ${g.cuotaNro}/${g.cuotaTotal}</span>` : '',
+    g.litros > 0 ? `<span class="badge">${String(g.litros).replace('.', ',')} L${vehiculo(g.vehiculoId) ? ' · ' + esc(vehiculo(g.vehiculoId).alias) : ''}</span>` : '',
     g.recurrenteId ? '<span class="badge">fijo</span>' : '',
     g.prescindible ? '<span class="badge prescindible">prescindible</span>' : '',
   ].join('');
