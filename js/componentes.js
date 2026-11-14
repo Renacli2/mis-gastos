@@ -43,3 +43,14 @@ export function barra(valor, tope) {
 }
 
 export const engranaje = `<a class="icono-btn" href="#/ajustes" aria-label="Ajustes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg></a>`;
+
+/** Fila de un vencimiento de servicio. `conVehiculo` agrega el nombre del vehículo (para Inicio). */
+export function filaVencimiento(v, textoVenc, conVehiculo = false) {
+  const etiqueta = { vencido: 'vencido', proximo: 'próximo', 'al-dia': 'al día' }[v.estado];
+  const destino = conVehiculo ? `#/vehiculos/${v.vehiculo.id}` : `#/servicios/nuevo/${v.vehiculo.id}/${encodeURIComponent(v.servicio.tipo)}`;
+  return `<a class="item venc ${v.estado}" href="${destino}">
+    <i class="traza"></i>
+    <span class="item-txt"><b>${esc(v.servicio.tipo)}${conVehiculo ? ` · ${esc(v.vehiculo.alias)}` : ''}</b><small>${esc(textoVenc)}</small></span>
+    <span class="badge ${v.estado}">${etiqueta}</span>
+  </a>`;
+}

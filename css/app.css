@@ -360,3 +360,11 @@ ul.cats { list-style: none; padding: 0 0 0 14px; margin: 4px 0; }
 .kpis.consumo .kpi small:last-child { grid-column: 1; }
 .kpi .uni { font-family: var(--texto-f); font-stretch: 100%; font-size: 13px; font-weight: 600; opacity: .8; }
 .tramos .fila > span:first-child { font-size: 14px; }
+
+/* Vencimientos de servicios */
+.venc .traza { background: var(--linea); }
+.venc.proximo .traza { background: var(--acento); }
+.venc.vencido .traza { background: var(--coral); }
+.badge.vencido { background: color-mix(in srgb, var(--coral) 16%, var(--sup)); color: var(--coral); }
+.badge.proximo { background: color-mix(in srgb, var(--acento) 30%, var(--sup)); color: var(--tinta); }
+.venc .badge { flex: none; }

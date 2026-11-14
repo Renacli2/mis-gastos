@@ -1,6 +1,7 @@
 import { S, aARS, delMes, rubro, cargar } from '../store.js';
 import { $, $$, esc, money, pct, sum, sumarMeses, hoy, mesActual, toast, nombreMes, diasDelMes } from '../util.js';
-import { selectorMes, itemGasto, vacio, barra } from '../componentes.js';
+import { selectorMes, itemGasto, vacio, barra, filaVencimiento } from '../componentes.js';
+import { avisos, textoVencimiento } from '../vencimientos.js';
 import { pendientes, cargarPendiente, omitirPendiente } from '../recurrentes.js';
 
 const entero = (n) => Math.round(n).toLocaleString('es-AR');
@@ -33,6 +34,7 @@ export function render(el) {
   const prev = sum(gPrev.map(aARS));
   const pend = pendientes();
   const hayUSD = S.gastos.some((g) => g.moneda === 'USD');
+  const venc = avisos(S.servicios, S.vehiculos, hoy());
 
   // Ritmo: lo gastado hasta hoy vs. lo que llevabas el mes anterior al mismo día
   const dia = esActual ? +hoy().slice(8) : 31;
@@ -69,6 +71,11 @@ export function render(el) {
     </section>
 
     ${hayUSD && !S.cot ? '<a class="card aviso" href="#/ajustes/dolar" style="margin-top:14px">Cargá la cotización del dólar en Ajustes para convertir tus gastos en USD.</a>' : ''}
+
+    ${venc.length ? `<section class="card" style="margin-top:14px">
+      <div class="card-tit"><h2>Servicios del vehículo</h2><a href="#/vehiculos" class="link">Ver vehículos</a></div>
+      <div class="lista">${venc.map((x) => filaVencimiento(x, textoVencimiento(x), true)).join("")}</div>
+    </section>` : ""}
 
     ${pend.length ? `<section class="card" style="margin-top:14px">
       <div class="card-tit"><h2>Gastos fijos pendientes</h2><button class="btn chico" id="cargar-todos">Cargar ${pend.length > 1 ? `los ${pend.length}` : 'el gasto'}</button></div>

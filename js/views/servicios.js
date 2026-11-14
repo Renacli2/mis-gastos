@@ -28,7 +28,7 @@ export function render(el, params) {
     ? { ...orig, medioId: gastoPrevio?.medioId || orig.medioId || S.gastos[0]?.medioId || S.medios[0]?.id }
     : {
         vehiculoId: vehs.some((v) => v.id === params[1]) ? params[1] : vehs[0].id,
-        tipo: '', fecha: hoy(), odometro: '', taller: '', notas: '', costo: '', proxKm: null, proxFecha: '',
+        tipo: params[2] && S.tiposServicio.includes(decodeURIComponent(params[2])) ? decodeURIComponent(params[2]) : '', fecha: hoy(), odometro: '', taller: '', notas: '', costo: '', proxKm: null, proxFecha: '',
         medioId: S.gastos[0]?.medioId || S.medios[0]?.id,
       };
   if (!orig) f.odometro = vehiculo(f.vehiculoId).odometro;

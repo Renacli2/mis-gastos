@@ -3,9 +3,10 @@ import { S, cargar, vehiculo } from '../store.js';
 import { cargasDe } from '../combustible.js';
 import { resumenConsumo } from '../consumo.js';
 import { historial } from '../servicios.js';
+import { vencimientosDe, textoVencimiento } from '../vencimientos.js';
 import { chart } from '../charts.js';
-import { $, $$, esc, uid, toast, money } from '../util.js';
-import { vacio, engranaje, itemGasto } from '../componentes.js';
+import { $, $$, esc, uid, toast, money, hoy } from '../util.js';
+import { vacio, engranaje, itemGasto, filaVencimiento } from '../componentes.js';
 
 export const COMBUSTIBLES = ['Nafta', 'Nafta premium', 'Diésel', 'GNC', 'Eléctrico', 'Híbrido'];
 export const km = (n) => `${Math.round(n || 0).toLocaleString('es-AR')} km`;
@@ -17,12 +18,22 @@ export function render(el, params) {
   lista(el);
 }
 
+const plural = (n, uno, varios) => `${n} ${n === 1 ? uno : varios}`;
+function etiquetas(v) {
+  if (v.activo === false) return '<span class="badges"><span class="badge">inactivo</span></span>';
+  const vs = vencimientosDe(S.servicios, v, hoy());
+  const venc = vs.filter((x) => x.estado === 'vencido').length;
+  const prox = vs.filter((x) => x.estado === 'proximo').length;
+  if (!venc && !prox) return '';
+  return `<span class="badges">${venc ? `<span class="badge vencido">${plural(venc, 'servicio vencido', 'servicios vencidos')}</span>` : ''}${prox ? `<span class="badge proximo">${plural(prox, 'próximo', 'próximos')}</span>` : ''}</span>`;
+}
+
 function lista(el) {
   const fila = (v) => {
     const detalle = [[v.marca, v.modelo, v.anio].filter(Boolean).join(' '), v.patente].filter(Boolean).join(' · ');
     return `<a class="item ${v.activo === false ? 'inactivo' : ''}" href="#/vehiculos/${v.id}">
       <span class="item-txt"><b>${esc(v.alias)}</b><small>${esc(detalle || v.combustible)}</small>
-        ${v.activo === false ? '<span class="badges"><span class="badge">inactivo</span></span>' : ''}</span>
+        ${etiquetas(v)}</span>
       <span class="item-der"><span class="item-monto">${km(v.odometro)}</span><small>${esc(v.combustible)}</small></span>
     </a>`;
   };
@@ -130,6 +141,7 @@ function ficha(el, id) {
   const detalle = [[v.marca, v.modelo, v.anio].filter(Boolean).join(' '), v.patente, v.combustible].filter(Boolean).join(' · ');
   const ultimas = S.gastos.filter((g) => g.vehiculoId === v.id && g.litros > 0).slice(0, 5);
   const servicios = historial(S.servicios, v.id);
+  const vencs = vencimientosDe(S.servicios, v, hoy());
   const filaServicio = (s) => `<a class="item" href="#/servicios/${s.id}">
       <span class="item-txt"><b>${esc(s.tipo)}</b>
         <small>${[fechaCorta(s.fecha), km(s.odometro), s.taller].filter(Boolean).map(esc).join(' · ')}</small>
@@ -146,6 +158,12 @@ function ficha(el, id) {
     <section class="hero odo">
       <span class="lead">Odómetro</span>
       <div class="total">${Math.round(v.odometro || 0).toLocaleString('es-AR')}<i class="km"> km</i></div>
+    </section>
+
+    <section class="sec"><h2>Próximos vencimientos</h2>
+      ${vencs.length ? `<div class="lista">${vencs.map((x) => filaVencimiento(x, textoVencimiento(x))).join('')}</div>
+        <p class="nota">Tocá un vencimiento para registrar ese servicio.</p>`
+        : vacio('Sin vencimientos cargados. Al registrar un servicio podés indicar cuándo toca el próximo, por km o por fecha.')}
     </section>
 
     <section class="sec"><h2>Consumo</h2>${bloqueConsumo(r)}</section>
