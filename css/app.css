@@ -348,3 +348,15 @@ ul.cats { list-style: none; padding: 0 0 0 14px; margin: 4px 0; }
 .bloque input[type=text] { background: var(--fondo); }
 .bloque .chip { background: var(--fondo); }
 .bloque .chip.sel { background: var(--pino); }
+.volver { display: inline-block; margin-top: 10px; }
+.volver + .cab .titulo { margin-top: 6px; }
+.hero.odo { padding: 16px 20px 14px; }
+.hero.odo .total { font-size: clamp(44px, 13vw, 54px); }
+.hero .total i.km { font-size: .4em; vertical-align: baseline; margin: 0 0 0 4px; }
+.kpis.consumo { grid-template-columns: 1fr; margin-top: 10px; }
+.kpis.consumo .kpi { display: grid; grid-template-columns: 1fr auto; align-items: baseline; column-gap: 10px; }
+.kpis.consumo .kpi small:first-child { grid-column: 1; }
+.kpis.consumo .kpi b { grid-column: 2; grid-row: 1 / span 2; align-self: center; font-size: 34px; }
+.kpis.consumo .kpi small:last-child { grid-column: 1; }
+.kpi .uni { font-family: var(--texto-f); font-stretch: 100%; font-size: 13px; font-weight: 600; opacity: .8; }
+.tramos .fila > span:first-child { font-size: 14px; }

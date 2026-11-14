@@ -1,6 +1,7 @@
 // Corre todos los tests y muestra el resultado. Abrir: http://localhost:8765/tests/index.html
 import { suites } from './lib.js';
 import './combustible.test.js';
+import './consumo.test.js';
 
 const salida = document.getElementById('salida');
 let ok = 0, mal = 0;

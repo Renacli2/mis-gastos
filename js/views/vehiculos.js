@@ -1,14 +1,18 @@
 import * as db from '../db.js';
 import { S, cargar, vehiculo } from '../store.js';
+import { cargasDe } from '../combustible.js';
+import { resumenConsumo } from '../consumo.js';
+import { chart } from '../charts.js';
 import { $, $$, esc, uid, toast } from '../util.js';
-import { vacio, engranaje } from '../componentes.js';
+import { vacio, engranaje, itemGasto } from '../componentes.js';
 
 export const COMBUSTIBLES = ['Nafta', 'Nafta premium', 'Diésel', 'GNC', 'Eléctrico', 'Híbrido'];
 export const km = (n) => `${Math.round(n || 0).toLocaleString('es-AR')} km`;
 const entero = (v) => parseInt(String(v).replace(/\D/g, ''), 10);
 
 export function render(el, params) {
-  if (params[0]) return formulario(el, params[0]);
+  if (params[0] === 'nuevo' || params[1] === 'editar') return formulario(el, params[0]);
+  if (params[0]) return ficha(el, params[0]);
   lista(el);
 }
 
@@ -56,7 +60,7 @@ function formulario(el, id) {
       ${orig ? `<label class="switch"><input type="checkbox" id="v-activo" ${f.activo !== false ? 'checked' : ''}>
         <span><b>Activo</b><small>Un vehículo inactivo no aparece al cargar combustible o servicios. Su historial se conserva.</small></span></label>` : ''}
       <button class="btn primario" type="submit">${orig ? 'Guardar cambios' : 'Guardar vehículo'}</button>
-      <a class="btn" href="#/vehiculos">Cancelar</a>
+      <a class="btn" href="${orig ? `#/vehiculos/${orig.id}` : '#/vehiculos'}">Cancelar</a>
     </form>`;
 
   $('#v-comb').addEventListener('click', (e) => {
@@ -85,6 +89,75 @@ function formulario(el, id) {
     });
     await cargar();
     toast('Vehículo guardado');
-    location.hash = '#/vehiculos';
+    location.hash = orig ? `#/vehiculos/${orig.id}` : '#/vehiculos';
   });
+}
+
+const dec = (n, d = 1) => n.toLocaleString('es-AR', { minimumFractionDigits: d, maximumFractionDigits: d });
+const fechaCorta = (f) => { const [y, m, d] = f.split('-'); return `${d}/${m}/${y.slice(2)}`; };
+
+function bloqueConsumo(r) {
+  if (r.estado === 'sin-cargas') {
+    return vacio('Todavía no hay cargas de combustible para este vehículo. Cargá un gasto en la categoría Combustible y elegí este vehículo.');
+  }
+  if (r.estado === 'faltan-llenos') {
+    return vacio(`Para calcular el consumo hacen falta dos cargas con <b>tanque lleno</b>. ${r.llenos === 1 ? 'Ya tenés una: falta la próxima.' : 'Todavía no hay ninguna.'}`);
+  }
+  const dato = (titulo, p, pie) => `<div class="kpi"><small>${titulo}</small>
+    <b>${dec(p.l100)}<span class="uni"> l/100 km</span></b><small>${dec(p.kml)} km/l · ${pie}</small></div>`;
+  const u = r.ultimo;
+  return `
+    <div class="kpis consumo">
+      ${dato('Último tramo', u, `${u.km.toLocaleString('es-AR')} km`)}
+      ${dato(r.ultimosN.tramos < r.n ? `Últimos ${r.ultimosN.tramos} tramos` : `Últimos ${r.n} tramos`, r.ultimosN, `${r.ultimosN.km.toLocaleString('es-AR')} km`)}
+      ${dato('Promedio histórico', r.historico, `${r.historico.tramos} ${r.historico.tramos === 1 ? 'tramo' : 'tramos'}`)}
+    </div>
+    ${r.tramos.length > 1 ? '<div class="graf graf-chico"><canvas id="c-consumo"></canvas></div>'
+      : '<p class="nota">El gráfico de evolución aparece a partir del segundo tramo.</p>'}
+    <div class="tramos">
+      ${[...r.tramos].reverse().slice(0, 6).map((t) => `<div class="fila">
+        <span>${fechaCorta(t.desde)} al ${fechaCorta(t.hasta)}<small> · ${t.km.toLocaleString('es-AR')} km, ${dec(t.litros)} L${t.parciales ? `, ${t.parciales} ${t.parciales === 1 ? 'parcial' : 'parciales'}` : ''}</small></span>
+        <span class="der"><b>${dec(t.l100)}</b><small>l/100 km</small></span></div>`).join('')}
+    </div>`;
+}
+
+function ficha(el, id) {
+  const v = vehiculo(id);
+  if (!v) { location.hash = '#/vehiculos'; return; }
+  const cargas = cargasDe(S.gastos, v.id);
+  const r = resumenConsumo(cargas);
+  const detalle = [[v.marca, v.modelo, v.anio].filter(Boolean).join(' '), v.patente, v.combustible].filter(Boolean).join(' · ');
+  const ultimas = S.gastos.filter((g) => g.vehiculoId === v.id).slice(0, 5);
+
+  el.innerHTML = `
+    <a class="link volver" href="#/vehiculos">‹ Vehículos</a>
+    <div class="cab"><h1 class="titulo">${esc(v.alias)}</h1>
+      <a class="btn chico" href="#/vehiculos/${v.id}/editar" style="margin-bottom:22px">Editar</a></div>
+    <p class="nota" style="margin-top:-10px">${esc(detalle)}${v.activo === false ? ' · inactivo' : ''}</p>
+
+    <section class="hero odo">
+      <span class="lead">Odómetro</span>
+      <div class="total">${Math.round(v.odometro || 0).toLocaleString('es-AR')}<i class="km"> km</i></div>
+    </section>
+
+    <section class="sec"><h2>Consumo</h2>${bloqueConsumo(r)}</section>
+
+    <section class="sec"><div class="card-tit"><h2>Últimas cargas</h2></div>
+      ${ultimas.length ? `<div class="lista">${ultimas.map(itemGasto).join('')}</div>` : vacio('Sin cargas registradas.')}
+    </section>`;
+
+  if (r.tramos.length > 1) {
+    chart($('#c-consumo'), {
+      type: 'line',
+      data: {
+        labels: r.tramos.map((t) => fechaCorta(t.hasta)),
+        datasets: [{ data: r.tramos.map((t) => +t.l100.toFixed(2)), borderColor: '#f2b705', backgroundColor: '#f2b705', tension: 0, pointRadius: 4, borderWidth: 3 }],
+      },
+      options: {
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => ` ${dec(c.parsed.y)} l/100 km` } } },
+        scales: { x: { grid: { display: false } }, y: { title: { display: true, text: 'l/100 km' }, ticks: { callback: (x) => dec(x, 0) } } },
+      },
+    });
+  }
 }
