@@ -23,7 +23,7 @@ export function render(host, params) {
   el.innerHTML = `
     <h1 class="titulo">Ajustes</h1>
 
-    ${sec('dolar', '💵 Cotización del dólar', `
+    ${sec('dolar', 'Cotización del dólar', `
       <p class="nota">Se usa para convertir a pesos los gastos en USD. Cada gasto guarda la cotización del día en que lo cargaste.</p>
       <div class="inline">
         <input id="cot" type="text" inputmode="decimal" value="${S.cot || ''}" placeholder="Ej: 1200">
@@ -31,33 +31,32 @@ export function render(host, params) {
       </div>
       ${S.cotFecha ? `<small>Actualizada el ${S.cotFecha.split('-').reverse().join('/')}</small>` : ''}`)}
 
-    ${sec('presupuestos', '🎯 Presupuestos mensuales', `
+    ${sec('presupuestos', 'Presupuestos mensuales', `
       <p class="nota">Tope mensual en pesos por rubro. Dejá vacío para no controlar ese rubro.</p>
-      ${S.rubros.map((r) => `<label class="fila"><span>${r.icono} ${esc(r.nombre)}</span>
+      ${S.rubros.map((r) => `<label class="fila"><span>${esc(r.nombre)}</span>
         <input class="corto" type="text" inputmode="decimal" data-presup="${r.id}" value="${S.presupuestos[r.id] || ''}" placeholder="—"></label>`).join('')}
       <div class="fila total-fila"><span>Total presupuestado</span><b>${money(Object.values(S.presupuestos).reduce((a, b) => a + b, 0))}</b></div>`)}
 
-    ${sec('recurrentes', '↻ Gastos fijos y suscripciones', `
+    ${sec('recurrentes', 'Gastos fijos y suscripciones', `
       <p class="nota">Se proponen automáticamente cada mes en Inicio. Para crear uno nuevo, cargá un gasto y activá “Repetir todos los meses”.</p>
       ${S.recurrentes.length ? S.recurrentes.map((r) => `<div class="rec ${r.activo ? '' : 'inactivo'}">
-        <div class="fila"><span>${rubro(r.rubroId).icono} <input class="txt" data-rec-desc="${r.id}" value="${esc(r.descripcion)}"></span>
+        <div class="fila"><span><i class="pastilla" style="background:${rubro(r.rubroId).color}"></i><input class="txt" data-rec-desc="${r.id}" value="${esc(r.descripcion)}"></span>
           <label class="mini-switch"><input type="checkbox" data-rec-activo="${r.id}" ${r.activo ? 'checked' : ''}> activo</label></div>
         <div class="fila"><span class="inline">
             <input class="corto" type="text" inputmode="decimal" data-rec-monto="${r.id}" value="${r.monto}"> ${r.moneda}
             · día <input class="mini" type="number" min="1" max="31" data-rec-dia="${r.id}" value="${r.dia}">
           </span>
-          <button class="icono-btn" data-rec-borrar="${r.id}" aria-label="Borrar">🗑</button></div>
+          <button class="icono-btn" data-rec-borrar="${r.id}" aria-label="Borrar">✕</button></div>
         <small>${esc(cat(r.categoriaId).nombre || rubro(r.rubroId).nombre)} · ${esc(medio(r.medioId).nombre)}</small>
       </div>`).join('') : vacio('No tenés gastos fijos.')}`)}
 
-    ${sec('rubros', '🗂 Rubros y categorías', `
+    ${sec('rubros', 'Rubros y categorías', `
       ${S.rubros.map((r) => `<details class="rubro">
-        <summary><span class="avatar" style="background:${r.color}26">${r.icono}</span> ${esc(r.nombre)} <small>(${catsDe(r.id).length})</small></summary>
+        <summary><i class="pastilla" style="background:${r.color}"></i>${esc(r.nombre)} <small>(${catsDe(r.id).length})</small></summary>
         <div class="inline">
-          <input class="mini" data-rubro-icono="${r.id}" value="${esc(r.icono)}" maxlength="4" aria-label="Ícono">
           <input class="txt" data-rubro-nombre="${r.id}" value="${esc(r.nombre)}" aria-label="Nombre">
           <input type="color" data-rubro-color="${r.id}" value="${r.color}" aria-label="Color">
-          <button class="icono-btn" data-rubro-borrar="${r.id}" aria-label="Borrar rubro">🗑</button>
+          <button class="icono-btn" data-rubro-borrar="${r.id}" aria-label="Borrar rubro">✕</button>
         </div>
         <ul class="cats">${catsDe(r.id).map((c) => `<li class="inline">
           <input class="txt" data-cat-nombre="${c.id}" value="${esc(c.nombre)}">
@@ -65,18 +64,18 @@ export function render(host, params) {
           <button class="icono-btn" data-cat-borrar="${c.id}" aria-label="Borrar">✕</button></li>`).join('')}</ul>
         <div class="inline"><input class="txt" placeholder="Nueva categoría" data-cat-nueva="${r.id}"><button class="btn chico" data-cat-agregar="${r.id}">Agregar</button></div>
       </details>`).join('')}
-      <div class="inline nuevo"><input class="mini" id="nr-icono" value="📌" maxlength="4"><input class="txt" id="nr-nombre" placeholder="Nuevo rubro"><button class="btn chico" data-a="rubro-nuevo">Agregar</button></div>`)}
+      <div class="inline nuevo"><input class="txt" id="nr-nombre" placeholder="Nuevo rubro"><button class="btn chico" data-a="rubro-nuevo">Agregar</button></div>`)}
 
-    ${sec('medios', '💳 Medios de pago', `
+    ${sec('medios', 'Medios de pago', `
       ${S.medios.map((m) => `<div class="inline medio">
         <input class="txt" data-medio-nombre="${m.id}" value="${esc(m.nombre)}">
         <select data-medio-tipo="${m.id}">${Object.entries(TIPOS).map(([k, v]) => `<option value="${k}" ${m.tipo === k ? 'selected' : ''}>${v}</option>`).join('')}</select>
-        <button class="icono-btn" data-medio-borrar="${m.id}" aria-label="Borrar">🗑</button></div>`).join('')}
+        <button class="icono-btn" data-medio-borrar="${m.id}" aria-label="Borrar">✕</button></div>`).join('')}
       <div class="inline nuevo"><input class="txt" id="nm-nombre" placeholder="Nuevo medio (ej: Naranja X)">
         <select id="nm-tipo">${Object.entries(TIPOS).map(([k, v]) => `<option value="${k}">${v}</option>`).join('')}</select>
         <button class="btn chico" data-a="medio-nuevo">Agregar</button></div>`)}
 
-    ${sec('datos', '💾 Backup y exportación', `
+    ${sec('datos', 'Backup y exportación', `
       <p class="nota">Tus datos se guardan solo en este celular. Hacé un backup de vez en cuando y guardalo en Drive o similar.</p>
       <button class="btn" data-a="exp-json">Descargar backup (JSON)</button>
       <button class="btn" data-a="exp-csv">Exportar gastos a Excel (CSV)</button>
@@ -84,7 +83,7 @@ export function render(host, params) {
       <button class="btn peligro" data-a="borrar-todo">Borrar todos los datos</button>
       <small>${S.gastos.length} gastos registrados</small>`)}
 
-    ${sec('app', '📲 Actualizaciones', `
+    ${sec('app', 'Actualizaciones', `
       <div class="version"><span>Versión instalada</span><b>${VERSION_ACTUAL}</b></div>
       <p class="nota">La app busca versiones nuevas sola cada vez que la abrís. Actualizar no borra tus gastos.</p>
       <button class="btn" data-a="buscar-upd">Buscar actualizaciones</button>
@@ -117,7 +116,6 @@ export function render(host, params) {
     if (d.recDia) return editar('recurrentes', d.recDia, { dia: Math.max(1, Math.min(31, +t.value || 1)) });
     if (d.recActivo) return editar('recurrentes', d.recActivo, { activo: t.checked }, t.checked ? 'Activado' : 'Pausado', true);
     if (d.rubroNombre && t.value.trim()) return editar('rubros', d.rubroNombre, { nombre: t.value.trim() }, 'Guardado', true);
-    if (d.rubroIcono && t.value.trim()) return editar('rubros', d.rubroIcono, { icono: t.value.trim() }, 'Guardado', true);
     if (d.rubroColor) return editar('rubros', d.rubroColor, { color: t.value }, 'Guardado', true);
     if (d.catNombre && t.value.trim()) return editar('categorias', d.catNombre, { nombre: t.value.trim() });
     if (d.medioNombre && t.value.trim()) return editar('medios', d.medioNombre, { nombre: t.value.trim() });
@@ -192,9 +190,9 @@ export function render(host, params) {
     }
     if (d.a === 'rubro-nuevo') {
       const nombre = $('#nr-nombre').value.trim(); if (!nombre) return;
-      const colores = ['#4e79a7', '#f28e2b', '#59a14f', '#e15759', '#76b7b2', '#edc948', '#b07aa1', '#ff9da7', '#9c755f'];
+      const colores = ['#2f6f8f', '#d98324', '#5a9a3c', '#d1495b', '#2ba39b', '#6c7bd1', '#8b5fbf', '#d96ba0', '#8a6b4f'];
       const id = uid();
-      await db.put('rubros', { id, nombre, icono: $('#nr-icono').value.trim() || '📌', color: colores[S.rubros.length % colores.length], orden: S.rubros.length });
+      await db.put('rubros', { id, nombre, icono: '📌', color: colores[S.rubros.length % colores.length], orden: S.rubros.length });
       await db.put('categorias', { id: uid(), rubroId: id, nombre: 'General', orden: 0 });
       return ok('Rubro agregado');
     }

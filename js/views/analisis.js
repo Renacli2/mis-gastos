@@ -60,55 +60,52 @@ export function render(el) {
     </section>
 
     ${alertas.length ? `<section class="card alerta">
-      <h2>⚠️ Rubros en alza</h2>
-      ${alertas.map((a) => `<div class="fila"><span>${a.r.icono} ${esc(a.r.nombre)}</span>
+      <h2>Rubros en alza</h2>
+      ${alertas.map((a) => `<div class="fila"><span>${esc(a.r.nombre)}</span>
         <span class="der"><b class="sube">${pct(a.var)}</b><small>${money(a.act)} vs ${money(a.prom)} prom.</small></span></div>`).join('')}
     </section>` : ''}
 
-    <section class="card">
-      <h2>Por rubro</h2>
-      ${porRubro.length ? `<div class="graf graf-torta"><canvas id="c-rubros"></canvas></div>
+    <section class="sec">
+      <h2>En qué se va la plata</h2>
+      ${porRubro.length ? `<div class="banda" role="img" aria-label="Reparto del gasto por rubro">
+        ${porRubro.map(([id, v]) => `<i style="flex:${v};background:${rubro(id).color}"></i>`).join('')}</div>
       ${porRubro.map(([id, v]) => {
         const r = rubro(id);
         const tope = S.presupuestos[id];
-        return `<div class="fila"><span><i class="punto" style="background:${r.color}"></i>${r.icono} ${esc(r.nombre)}</span>
-          <span class="der">${money(v)}<small>${Math.round((v / total) * 100)}%${tope ? ` · tope ${money(tope)}` : ''}</small></span></div>`;
+        const alza = alertas.find((a) => a.r.id === id);
+        return `<div class="rub"><i class="punto" style="background:${r.color};margin:0"></i>
+          <span class="n">${esc(r.nombre)}${alza ? `<span class="marca">${pct(alza.var)}</span>` : ''}</span>
+          <span class="der"><b>${money(v)}</b><small>${Math.round((v / total) * 100)}%${tope ? (v > tope ? ' · pasaste el tope' : ` · tope ${money(tope)}`) : ''}</small></span></div>`;
       }).join('')}` : vacio('Sin gastos este mes.')}
     </section>
 
-    ${porCat.length ? `<section class="card"><h2>Top categorías</h2>
-      <div class="graf" style="height:${porCat.length * 34 + 30}px"><canvas id="c-cats"></canvas></div></section>` : ''}
-
-    ${porMedio.length ? `<section class="card"><h2>Por medio de pago</h2>
-      <div class="graf graf-torta"><canvas id="c-medios"></canvas></div></section>` : ''}
-
-    <section class="card"><h2>Evolución 12 meses</h2>
-      <div class="graf"><canvas id="c-evo"></canvas></div></section>
-
-    <section class="card ahorro">
-      <h2>💡 Oportunidades de ahorro</h2>
-      <div class="fila"><span>Gastos prescindibles del mes</span><span class="der"><b>${money(presc)}</b><small>${total ? Math.round((presc / total) * 100) : 0}% del total</small></span></div>
-      ${presc ? `<p class="nota">Si recortás la mitad de los prescindibles ahorrarías <b>${money(presc / 2)}</b> por mes (<b>${money(presc * 6)}</b> por año).</p>` : '<p class="nota">Marcá gastos como <i>prescindibles</i> al cargarlos para ver cuánto podrías ahorrar.</p>'}
-      <div class="fila"><span>Gastos fijos (recurrentes activos)</span><span class="der"><b>${money(recMes)}/mes</b><small>${money(recMes * 12)}/año</small></span></div>
-      <a class="link" href="#/ajustes/recurrentes">Revisar gastos fijos y suscripciones →</a>
+    <section class="recorte">
+      <h2>Dónde recortar</h2>
+      ${presc ? `<div class="grande">${money(presc)}</div>
+        <p>son gastos que marcaste como prescindibles: el ${total ? Math.round((presc / total) * 100) : 0}% del mes. Si recortás la mitad, ahorrás <b>${money(presc * 6)}</b> al año.</p>`
+        : '<p class="nota" style="margin:0">Marcá gastos como <b>prescindibles</b> al cargarlos y acá vas a ver cuánto podrías ahorrar.</p>'}
+      <div class="fila"><span>Gastos fijos activos</span><span class="der"><b>${money(recMes)}/mes</b><small>${money(recMes * 12)} al año</small></span></div>
+      <a class="link" href="#/ajustes/recurrentes">Revisar gastos fijos y suscripciones</a>
     </section>
 
-    <section class="card"><h2>Cuotas por pagar</h2>
+    ${porCat.length ? `<section class="sec"><h2>Top categorías</h2>
+      <div class="graf" style="height:${porCat.length * 34 + 30}px"><canvas id="c-cats"></canvas></div></section>` : ''}
+
+    ${porMedio.length ? `<section class="sec"><h2>Por medio de pago</h2>
+      <div class="graf graf-torta"><canvas id="c-medios"></canvas></div></section>` : ''}
+
+    <section class="sec"><h2>Evolución de 12 meses</h2>
+      <div class="graf"><canvas id="c-evo"></canvas></div></section>
+
+    <section class="sec"><h2>Cuotas por pagar</h2>
       ${totalCuotasFut ? `<p class="nota">Tenés <b>${money(totalCuotasFut)}</b> comprometidos en cuotas para los próximos meses.</p>
         <div class="graf graf-chico"><canvas id="c-cuotas"></canvas></div>` : vacio('No tenés cuotas pendientes.')}
     </section>
 
-    <section class="card"><h2>Gastos más grandes del mes</h2>
+    <section class="sec"><h2>Gastos más grandes del mes</h2>
       ${top.length ? `<div class="lista">${top.map(itemGasto).join('')}</div>` : vacio('Sin gastos.')}
     </section>`;
 
-  const torta = (id, data, colors) => chart($(id), {
-    type: 'doughnut',
-    data: { labels: data.map((d) => d[0]), datasets: [{ data: data.map((d) => d[1]), backgroundColor: colors, borderWidth: 0 }] },
-    options: { maintainAspectRatio: false, cutout: '62%', plugins: { legend: { display: false }, tooltip: tooltipARS } },
-  });
-
-  if (porRubro.length) torta('#c-rubros', porRubro.map(([id, v]) => [rubro(id).nombre, v]), porRubro.map(([id]) => rubro(id).color));
   if (porMedio.length) {
     chart($('#c-medios'), {
       type: 'doughnut',
@@ -145,7 +142,7 @@ export function render(el) {
   if (totalCuotasFut) {
     chart($('#c-cuotas'), {
       type: 'bar',
-      data: { labels: mesesFut.map(mesCorto), datasets: [{ data: cuotasFut, backgroundColor: '#4e79a7', borderRadius: 4 }] },
+      data: { labels: mesesFut.map(mesCorto), datasets: [{ data: cuotasFut, backgroundColor: '#2f6f8f', borderRadius: 4 }] },
       options: { maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => ` ${money(c.parsed.y)}` } } },
         scales: { x: { grid: { display: false } }, y: { ticks: { callback: fmtCorto } } } },
     });

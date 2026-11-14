@@ -29,11 +29,11 @@ export function render(el, params) {
       };
 
   el.innerHTML = `
-    <h1 class="titulo">${orig ? 'Editar gasto' : 'Nuevo gasto'}</h1>
-    <form id="form" class="card form" autocomplete="off">
+    <h1 class="titulo">${orig ? 'Editar gasto' : 'Cargar gasto'}</h1>
+    <form id="form" class="form" autocomplete="off">
       <div class="monto-wrap">
         <div class="seg" id="moneda">
-          <button type="button" data-v="ARS">$ ARS</button><button type="button" data-v="USD">US$</button>
+          <button type="button" data-v="ARS">Pesos</button><button type="button" data-v="USD">Dólares</button>
         </div>
         <input id="monto" class="monto" type="text" inputmode="decimal" placeholder="0" value="${f.monto !== '' ? String(f.monto).replace('.', ',') : ''}" required>
       </div>
@@ -67,7 +67,7 @@ export function render(el, params) {
   const chips = (cont, items, sel, attr) => {
     $(cont).innerHTML = items.map((i) =>
       `<button type="button" class="chip ${i.id === sel ? 'sel' : ''}" data-${attr}="${i.id}"
-        ${i.color ? `style="--c:${i.color}"` : ''}>${i.icono ? i.icono + ' ' : ''}${esc(i.nombre)}</button>`).join('') || '<small>—</small>';
+        ${i.color ? `style="--c:${i.color}"` : ''}>${i.color ? '<i></i>' : ''}${esc(i.nombre)}</button>`).join('') || '<small>—</small>';
   };
 
   const pintarRubros = () => chips('#rubros', rubrosPorUso(), f.rubroId, 'rubro');

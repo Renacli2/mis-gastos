@@ -4,7 +4,7 @@ importScripts('version.js');
 const CACHE = `mis-gastos-${self.APP_VERSION}`;
 const ARCHIVOS = [
   './', 'index.html', 'version.js', 'manifest.webmanifest', 'css/app.css', 'vendor/chart.umd.min.js',
-  'fonts/bricolage.woff2', 'fonts/figtree.woff2',
+  'fonts/anybody.woff2', 'fonts/schibsted.woff2',
   'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png',
   'js/app.js', 'js/db.js', 'js/util.js', 'js/store.js', 'js/seed.js', 'js/charts.js', 'js/update.js',
   'js/componentes.js', 'js/recurrentes.js',

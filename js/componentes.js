@@ -21,11 +21,11 @@ export function itemGasto(g) {
   const sub = g.descripcion && c.nombre ? c.nombre : r.nombre;
   const badges = [
     g.cuotaTotal > 1 ? `<span class="badge">cuota ${g.cuotaNro}/${g.cuotaTotal}</span>` : '',
-    g.recurrenteId ? '<span class="badge">↻ fijo</span>' : '',
+    g.recurrenteId ? '<span class="badge">fijo</span>' : '',
     g.prescindible ? '<span class="badge prescindible">prescindible</span>' : '',
   ].join('');
   return `<a class="item" href="#/editar/${g.id}">
-    <span class="avatar" style="background:${r.color}2e">${r.icono}</span>
+    <i class="traza" style="background:${r.color}"></i>
     <span class="item-txt"><b>${esc(titulo)}</b><small>${esc(sub)}</small>${badges ? `<span class="badges">${badges}</span>` : ''}</span>
     <span class="item-der"><span class="item-monto">${money(g.monto, g.moneda)}</span><small>${esc(medio(g.medioId).nombre)}</small></span>
   </a>`;

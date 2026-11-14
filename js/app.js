@@ -1,5 +1,5 @@
 import { S, cargar } from './store.js';
-import { seedSiHaceFalta } from './seed.js';
+import { seedSiHaceFalta, migrarPaleta } from './seed.js';
 import { $, $$, sumarMeses, toast } from './util.js';
 import { destruirCharts } from './charts.js';
 import { iniciarActualizaciones } from './update.js';
@@ -39,6 +39,7 @@ document.addEventListener('click', (e) => {
 async function init() {
   if (navigator.storage?.persist) navigator.storage.persist().catch(() => {});
   await seedSiHaceFalta();
+  await migrarPaleta();
   await cargar();
   window.addEventListener('hashchange', ruta);
   await ruta();
