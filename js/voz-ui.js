@@ -16,6 +16,7 @@ export const htmlVoz = () => (soportaVoz() ? `
       <div class="voz-txt" aria-live="polite"><b id="voz-estado">Dictar el gasto</b><small id="voz-det">${EJEMPLO}</small></div>
       <button type="button" class="link voz-cancelar" id="voz-cancelar" hidden>Cancelar</button>
     </div>
+    <div class="voz-res" id="voz-res" hidden></div>
     <div class="voz-aviso" id="voz-aviso" hidden>
       <p>Para dictar, el navegador te va a pedir permiso para usar el micrófono. Solo se usa mientras el botón está activo.</p>
       <p>La transcripción la hace el navegador (en Chrome, con los servidores de Google) y necesita internet. La app no guarda el audio ni lo envía a ningún otro lado.</p>
@@ -37,7 +38,7 @@ export function montarVoz({ onFrase }) {
     btn.classList.toggle('escuchando', activo);
     btn.setAttribute('aria-pressed', String(activo));
     btn.setAttribute('aria-label', activo ? 'Terminar de dictar' : 'Dictar el gasto por voz');
-    $('#voz-cancelar').hidden = !activo;
+    if ($('#voz-cancelar')) $('#voz-cancelar').hidden = !activo;   // al salir de la pantalla el bloque ya no está
   };
   const bloquear = () => {
     btn.disabled = true;

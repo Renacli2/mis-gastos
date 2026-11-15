@@ -3,6 +3,8 @@ import { S, cargar, catsDe, medio, cat, vehiculo, vehiculosActivos } from '../st
 import { $, $$, esc, uid, hoy, mesDe, sumarMeses, fechaEnMes, round2, money, toast } from '../util.js';
 import { cargasDe, validarCarga, precioPorLitro, odometroVehiculo } from '../combustible.js';
 import { htmlVoz, montarVoz } from '../voz-ui.js';
+import { interpretar, textoEntendido } from '../voz-interpretar.js';
+import { SINONIMOS } from '../voz-sinonimos.js';
 
 const SIN_VEHICULO = 'ninguno';
 const km = (n) => `${Math.round(n || 0).toLocaleString('es-AR')} km`;
@@ -203,7 +205,64 @@ export function render(el, params) {
   $('#monto').addEventListener('input', pintarCuotas);
   $('#cuotas').addEventListener('input', pintarCuotas);
   if (!orig) setTimeout(() => $('#monto').focus(), 50);
-  if (!orig) montarVoz({ onFrase: () => {} });
+
+  // ---- Carga por voz: rellena el formulario con lo dictado. Nunca guarda: se confirma con el botón de siempre. ----
+  const marcar = (sel) => $(sel)?.closest('.campo, .monto-wrap')?.classList.add('voz-ok');
+  // Un campo deja de estar resaltado cuando lo tocás o lo corregís a mano.
+  $$('.campo, .monto-wrap', $('#form')).forEach((c) => ['input', 'click'].forEach((ev) =>
+    c.addEventListener(ev, (e) => { if (e.isTrusted) c.classList.remove('voz-ok'); })));
+  const repintar = () => { pintarRubros(); pintarCats(); pintarMedios(); pintarMoneda(); pintarComb(); pintarCuotas(); };
+  const ponerCategoria = (id) => {
+    f.categoriaId = id; f.rubroId = cat(id).rubroId; ajustarVehiculo();
+    marcar('#rubros'); marcar('#cats');
+  };
+  const ponerMonto = (n) => { $('#monto').value = String(n).replace('.', ','); marcar('#monto'); };
+  const ponerMedio = (id) => { f.medioId = id; marcar('#medios'); };
+  const ponerVehiculo = (id) => { f.vehiculoId = id; vehElegidoAMano = true; marcar('#vehs'); };
+
+  const aplicarVoz = (texto) => {
+    const ctx = { rubros: S.rubros, categorias: S.categorias, medios: S.medios, vehiculos: vehs, hoy: hoy(), sinonimos: SINONIMOS };
+    const r = interpretar(texto, ctx);
+    if (r.monto !== null) ponerMonto(r.monto);
+    if (r.moneda) { f.moneda = r.moneda; marcar('#monto'); }
+    if (r.fecha) { $('#fecha').value = r.fecha; marcar('#fecha'); }
+    if (r.categoriaId) ponerCategoria(r.categoriaId);
+    else if (r.rubroId && r.rubroId !== f.rubroId) {
+      const cs = catsDe(r.rubroId);
+      f.rubroId = r.rubroId; f.categoriaId = cs.length === 1 ? cs[0].id : null; ajustarVehiculo();
+      marcar('#rubros');
+    }
+    if (r.medioId) ponerMedio(r.medioId);
+    if (r.vehiculoId) ponerVehiculo(r.vehiculoId);
+    if (r.litros !== null && $('#litros')) { $('#litros').value = String(r.litros).replace('.', ','); marcar('#litros'); }
+    if (r.odometro !== null && $('#odo')) { $('#odo').value = r.odometro; marcar('#odo'); }
+    repintar();
+
+    // Lo ambiguo no se decide: se ofrece como opciones.
+    const dudas = [
+      { titulo: '¿Cuál es el monto?', ids: () => r.montosPosibles, nombre: (n) => money(+n, f.moneda), elegir: (n) => { r.monto = +n; r.montosPosibles = []; ponerMonto(+n); } },
+      { titulo: '¿Qué categoría?', ids: () => (r.categoriasPosibles.length <= 6 ? r.categoriasPosibles : []), nombre: (id) => cat(id).nombre, elegir: (id) => { r.categoriaId = id; r.categoriasPosibles = []; ponerCategoria(id); } },
+      { titulo: '¿Con qué pagaste?', ids: () => r.mediosPosibles, nombre: (id) => medio(id).nombre, elegir: (id) => { r.medioId = id; r.mediosPosibles = []; ponerMedio(id); } },
+      { titulo: '¿Qué vehículo?', ids: () => r.vehiculosPosibles, nombre: (id) => vehiculo(id)?.alias, elegir: (id) => { r.vehiculoId = id; r.vehiculosPosibles = []; ponerVehiculo(id); } },
+    ];
+    const res = $('#voz-res');
+    const pintarRes = () => {
+      const entendio = textoEntendido(r, ctx);
+      const hayDudas = dudas.some((d) => d.ids().length);
+      res.hidden = false;
+      const titulo = !entendio.startsWith('Entendí') && hayDudas ? 'Hay más de una opción: elegí cuál va' : entendio;
+      res.innerHTML = `<b>${esc(titulo)}</b>`
+        + dudas.map((d, k) => (d.ids().length ? `<div class="voz-duda"><span>${d.titulo}</span><div class="chips">${
+          d.ids().map((id) => `<button type="button" class="chip" data-duda="${k}" data-id="${esc(String(id))}">${esc(d.nombre(id))}</button>`).join('')}</div></div>` : '')).join('')
+        + `<small>${entendio.startsWith('Entendí') || hayDudas ? 'Revisá los campos resaltados y tocá Guardar. Nada se guarda solo.' : 'Probá de nuevo o completá el gasto a mano.'}</small>`;
+    };
+    res.onclick = (e) => {
+      const b = e.target.closest('[data-duda]'); if (!b) return;
+      dudas[+b.dataset.duda].elegir(b.dataset.id); repintar(); pintarRes();
+    };
+    pintarRes();
+  };
+  if (!orig) montarVoz({ onFrase: aplicarVoz });
 
   $('#form').addEventListener('submit', async (e) => {
     e.preventDefault();

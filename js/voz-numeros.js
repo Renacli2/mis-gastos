@@ -41,6 +41,15 @@ export function numeroEnDigitos(p) {
   return null;
 }
 
+/** ¿Desde la palabra j viene un grupo menor a mil seguido de "mil" o "lucas"? */
+function otroMilAdelante(t, j) {
+  if (esDigitos(t[j])) return MILES.includes(t[j + 1]);
+  let k = j;
+  while (k < t.length && (tiene(CENTENAS, t[k]) || tiene(DECENAS, t[k]) || tiene(CERRADOS, t[k]) || tiene(UNIDADES, t[k])
+    || (t[k] === 'y' && k > j && tiene(UNIDADES, t[k + 1])))) k++;
+  return k > j && MILES.includes(t[k]);
+}
+
 /** Lee un número que empieza en la palabra i. Devuelve { valor, hasta } o null. */
 function leer(t, i) {
   let millones = 0, miles = 0, act = 0;
@@ -50,6 +59,8 @@ function leer(t, i) {
   for (; j < t.length; j++) {
     const w = t[j];
     let mult = null;
+    // "dos mil tres mil": si lo que sigue a un "mil" vuelve a terminar en "mil", ahí empieza otro número.
+    if (milUsado && nivel === 4 && act === 0 && otroMilAdelante(t, j)) break;
     if (esDigitos(w)) {
       const v = numeroEnDigitos(w);
       if (v === null || nivel !== 4 || ((milUsado || millonUsado) && v >= 1000)) break;

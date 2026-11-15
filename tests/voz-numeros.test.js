@@ -63,6 +63,10 @@ suite('Voz · números dentro de una frase', () => {
     igual(valores('gasté quince mil en supermercado'), [15000]);
     igual(valores('cuarenta cincuenta'), [40, 50]);
     igual(valores('quinientos seiscientos'), [500, 600]);
+    igual(valores('dos mil tres mil'), [2000, 3000]);
+    igual(valores('cincuenta y dos mil ciento un mil kilómetros'), [52000, 101000]);
+    igual(valores('quince mil 500 20 lucas'), [15500, 20000]);
+    igual(valores('dos mil tres'), [2003]);
     igual(valores('Pagué $8.500, de farmacia.'), [8500]);
   });
   test('la "y" que no une un número lo corta', () => {

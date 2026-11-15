@@ -395,5 +395,17 @@ ul.cats { list-style: none; padding: 0 0 0 14px; margin: 4px 0; }
 .voz-cancelar { flex: none; border: 0; background: transparent; cursor: pointer; padding: 12px 4px; }
 .voz-aviso { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--linea); font-size: 14px; color: var(--tinta2); }
 .voz-aviso p { margin: 0 0 8px; }
+.voz-res { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--linea); }
+.voz-res b { display: block; font-size: 16px; overflow-wrap: anywhere; }
+.voz-res small { display: block; color: var(--tinta2); font-size: 13px; margin-top: 8px; }
+.voz-duda { margin-top: 10px; }
+.voz-duda span { display: block; font-size: 13px; font-weight: 700; color: var(--tinta2); margin-bottom: 6px; }
+.voz-duda .chip { background: var(--fondo); }
+/* Campo completado por voz, pendiente de revisar */
+.voz-ok { position: relative; }
+.voz-ok::before {
+  content: ''; position: absolute; inset: -6px -8px; border-radius: 8px; pointer-events: none;
+  background: color-mix(in srgb, var(--acento) 15%, transparent); border-left: 4px solid var(--acento);
+}
 .voz-aviso-btns { display: flex; align-items: center; gap: 16px; margin-top: 10px; }
 .voz-aviso-btns .link { border: 0; background: transparent; cursor: pointer; padding: 8px 0; }
