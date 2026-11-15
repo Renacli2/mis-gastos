@@ -1,6 +1,6 @@
-import { S, aARS, delMes, rubro, cat, medio, catsDe } from '../store.js';
+import { S, aARS, delMes, rubro, cat, medio, catsDe, vehiculo } from '../store.js';
 import { $, esc, money, sum, fechaLarga } from '../util.js';
-import { selectorMes, itemGasto, vacio } from '../componentes.js';
+import { selectorMes, itemGasto, vacio, selectVehiculo } from '../componentes.js';
 
 const F = { rubroId: '', categoriaId: '', medioId: '', moneda: '', q: '', prescindible: false };
 
@@ -11,15 +11,21 @@ function filtrar() {
     (!F.categoriaId || g.categoriaId === F.categoriaId) &&
     (!F.medioId || g.medioId === F.medioId) &&
     (!F.moneda || g.moneda === F.moneda) &&
+    (!S.vehFiltro || g.vehiculoId === S.vehFiltro) &&
     (!F.prescindible || g.prescindible) &&
-    (!q || [g.descripcion, cat(g.categoriaId).nombre, rubro(g.rubroId).nombre, medio(g.medioId).nombre]
+    (!q || [g.descripcion, cat(g.categoriaId).nombre, rubro(g.rubroId).nombre, medio(g.medioId).nombre, vehiculo(g.vehiculoId)?.alias]
       .join(' ').toLowerCase().includes(q))
   );
 }
 
 const opt = (v, txt, sel) => `<option value="${v}" ${v === sel ? 'selected' : ''}>${esc(txt)}</option>`;
 
-export function render(el) {
+// Rutas: #/gastos  ·  #/gastos/vehiculo/<id> (abre el listado filtrado por ese vehículo)
+export function render(el, params = []) {
+  if (params[0] === 'vehiculo' && vehiculo(params[1])) {
+    S.vehFiltro = params[1];
+    history.replaceState(null, '', '#/gastos');
+  }
   el.innerHTML = `
     ${selectorMes()}
     <section class="card filtros">
@@ -30,6 +36,7 @@ export function render(el) {
         <select id="f-medio">${opt('', 'Todos los medios', F.medioId)}${S.medios.map((m) => opt(m.id, m.nombre, F.medioId)).join('')}</select>
         <select id="f-moneda">${opt('', 'ARS y USD', F.moneda)}${opt('ARS', 'Solo ARS', F.moneda)}${opt('USD', 'Solo USD', F.moneda)}</select>
       </div>
+      ${S.vehiculos.length ? `<div style="margin-top:8px">${selectVehiculo('f-veh')}</div>` : ''}
       <label class="check"><input type="checkbox" id="f-presc" ${F.prescindible ? 'checked' : ''}> Solo prescindibles</label>
     </section>
     <div id="resultado"></div>`;
@@ -39,11 +46,11 @@ export function render(el) {
     const porDia = {};
     lista.forEach((g) => (porDia[g.fecha] ??= []).push(g));
     $('#resultado').innerHTML = lista.length
-      ? `<div class="resumen-filtro">${lista.length} gastos · <b>${money(sum(lista.map(aARS)))}</b></div>` +
+      ? `<div class="resumen-filtro">${lista.length} ${lista.length === 1 ? 'gasto' : 'gastos'} · <b>${money(sum(lista.map(aARS)))}</b></div>` +
         Object.entries(porDia).map(([f, gs]) => `<section class="dia">
           <div class="card-tit"><h3>${fechaLarga(f)}</h3><small>${money(sum(gs.map(aARS)))}</small></div>
           <div class="lista">${gs.map(itemGasto).join('')}</div></section>`).join('')
-      : vacio('No hay gastos que coincidan.');
+      : vacio(S.vehFiltro ? `No hay gastos de ${esc(vehiculo(S.vehFiltro)?.alias || 'ese vehículo')} en este mes con esos filtros.` : 'No hay gastos que coincidan.');
   };
 
   $('#f-q').addEventListener('input', (e) => { F.q = e.target.value; pintar(); });
@@ -51,6 +58,7 @@ export function render(el) {
   $('#f-cat').addEventListener('change', (e) => { F.categoriaId = e.target.value; pintar(); });
   $('#f-medio').addEventListener('change', (e) => { F.medioId = e.target.value; pintar(); });
   $('#f-moneda').addEventListener('change', (e) => { F.moneda = e.target.value; pintar(); });
+  $('#f-veh')?.addEventListener('change', (e) => { S.vehFiltro = e.target.value; pintar(); });
   $('#f-presc').addEventListener('change', (e) => { F.prescindible = e.target.checked; pintar(); });
   pintar();
 }

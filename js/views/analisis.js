@@ -1,6 +1,7 @@
-import { S, aARS, delMes, rubro, cat, medio } from '../store.js';
+import { S, aARS, delMes as delMesTodos, rubro, cat, medio, vehiculo } from '../store.js';
 import { $, esc, money, pct, sum, sumarMeses, mesCorto, mesActual, hoy, diasDelMes } from '../util.js';
-import { selectorMes, itemGasto, vacio } from '../componentes.js';
+import { selectorMes, itemGasto, vacio, selectVehiculo } from '../componentes.js';
+import { costosVehiculo } from '../costos.js';
 import { chart, PALETA } from '../charts.js';
 import { costoMensual } from '../recurrentes.js';
 
@@ -15,6 +16,10 @@ const tooltipARS = { callbacks: { label: (c) => ` ${c.dataset.label ? c.dataset.
 
 export function render(el) {
   const mes = S.mes;
+  // Filtro por vehículo: todo el reporte se calcula solo con los gastos de ese vehículo.
+  const filtro = vehiculo(S.vehFiltro) ? S.vehFiltro : '';
+  const base = filtro ? S.gastos.filter((g) => g.vehiculoId === filtro) : S.gastos;
+  const delMes = (m) => delMesTodos(m, base);
   const gm = delMes(mes);
   const total = sum(gm.map(aARS));
   const prev = sum(delMes(sumarMeses(mes, -1)).map(aARS));
@@ -42,7 +47,7 @@ export function render(el) {
 
   // Evolución de 12 meses, apilado por rubro
   const meses12 = Array.from({ length: 12 }, (_, i) => sumarMeses(mes, i - 11));
-  const rubrosEvo = S.rubros.filter((r) => S.gastos.some((g) => g.rubroId === r.id && g.fecha >= meses12[0] && g.fecha <= `${mes}-31`));
+  const rubrosEvo = S.rubros.filter((r) => base.some((g) => g.rubroId === r.id && g.fecha >= meses12[0] && g.fecha <= `${mes}-31`));
 
   // Cuotas futuras (después del mes actual real)
   const ma = mesActual();
@@ -50,8 +55,18 @@ export function render(el) {
   const cuotasFut = mesesFut.map((m) => sum(delMes(m).filter((g) => g.cuotaGrupo).map(aARS)));
   const totalCuotasFut = sum(cuotasFut);
 
+  // Costo de cada vehículo: en el mes elegido y acumulado, con su costo por km
+  const tipoCat = (id) => cat(id).tipo;
+  const porVehiculo = filtro ? [] : S.vehiculos.map((v) => ({
+    v,
+    mes: costosVehiculo(S.gastos, S.servicios, v.id, aARS, tipoCat, { desde: `${mes}-01`, hasta: `${mes}-31` }).total,
+    todo: costosVehiculo(S.gastos, S.servicios, v.id, aARS, tipoCat),
+  })).filter((x) => x.todo.total > 0);
+
   el.innerHTML = `
     ${selectorMes()}
+    ${S.vehiculos.length ? `<div class="filtro-veh">${selectVehiculo('an-veh')}</div>` : ''}
+    ${filtro ? `<p class="nota" style="margin-top:-6px">Reporte solo con los gastos de <b>${esc(vehiculo(filtro).alias)}</b>.</p>` : ''}
     <section class="kpis">
       <div class="kpi"><small>Total del mes</small><b>${money(total)}</b></div>
       <div class="kpi"><small>vs. mes anterior</small><b class="${total > prev ? 'sube' : 'baja'}">${prev ? pct(((total - prev) / prev) * 100) : '—'}</b></div>
@@ -71,7 +86,7 @@ export function render(el) {
         ${porRubro.map(([id, v]) => `<i style="flex:${v};background:${rubro(id).color}"></i>`).join('')}</div>
       ${porRubro.map(([id, v]) => {
         const r = rubro(id);
-        const tope = S.presupuestos[id];
+        const tope = filtro ? 0 : S.presupuestos[id]; // el tope es del rubro entero, no de un vehículo
         const alza = alertas.find((a) => a.r.id === id);
         return `<div class="rub"><i class="punto" style="background:${r.color};margin:0"></i>
           <span class="n">${esc(r.nombre)}${alza ? `<span class="marca">${pct(alza.var)}</span>` : ''}</span>
@@ -84,9 +99,15 @@ export function render(el) {
       ${presc ? `<div class="grande">${money(presc)}</div>
         <p>son gastos que marcaste como prescindibles: el ${total ? Math.round((presc / total) * 100) : 0}% del mes. Si recortás la mitad, ahorrás <b>${money(presc * 6)}</b> al año.</p>`
         : '<p class="nota" style="margin:0">Marcá gastos como <b>prescindibles</b> al cargarlos y acá vas a ver cuánto podrías ahorrar.</p>'}
-      <div class="fila"><span>Gastos fijos activos</span><span class="der"><b>${money(recMes)}/mes</b><small>${money(recMes * 12)} al año</small></span></div>
-      <a class="link" href="#/ajustes/recurrentes">Revisar gastos fijos y suscripciones</a>
+      ${filtro ? '' : `<div class="fila"><span>Gastos fijos activos</span><span class="der"><b>${money(recMes)}/mes</b><small>${money(recMes * 12)} al año</small></span></div>
+      <a class="link" href="#/ajustes/recurrentes">Revisar gastos fijos y suscripciones</a>`}
     </section>
+
+    ${porVehiculo.length ? `<section class="sec"><h2>Costo por vehículo</h2>
+      ${porVehiculo.map(({ v, mes: delMesV, todo }) => `<a class="rub" href="#/vehiculos/${v.id}">
+        <span class="n">${esc(v.alias)}<small style="display:block;font-weight:400">${todo.porKm ? `${money(todo.porKm)} por km · ` : ''}${money(todo.total)} acumulado</small></span>
+        <span class="der"><b>${money(delMesV)}</b><small>en el mes</small></span></a>`).join('')}
+    </section>` : ''}
 
     ${porCat.length ? `<section class="sec"><h2>Top categorías</h2>
       <div class="graf" style="height:${porCat.length * 34 + 30}px"><canvas id="c-cats"></canvas></div></section>` : ''}
@@ -105,6 +126,8 @@ export function render(el) {
     <section class="sec"><h2>Gastos más grandes del mes</h2>
       ${top.length ? `<div class="lista">${top.map(itemGasto).join('')}</div>` : vacio('Sin gastos.')}
     </section>`;
+
+  $('#an-veh')?.addEventListener('change', (e) => { S.vehFiltro = e.target.value; S.rerender(); });
 
   if (porMedio.length) {
     chart($('#c-medios'), {

@@ -3,7 +3,7 @@ import { mesActual } from './util.js';
 
 export const S = {
   rubros: [], categorias: [], medios: [], presupuestos: {}, recurrentes: [], gastos: [],
-  vehiculos: [], servicios: [], tiposServicio: [],
+  vehiculos: [], servicios: [], tiposServicio: [], vehFiltro: '',
   cot: 0, cotFecha: '', mes: mesActual(),
   rerender: () => {},
 };

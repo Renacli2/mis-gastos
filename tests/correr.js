@@ -4,6 +4,7 @@ import './combustible.test.js';
 import './consumo.test.js';
 import './servicios.test.js';
 import './vencimientos.test.js';
+import './costos.test.js';
 
 const salida = document.getElementById('salida');
 let ok = 0, mal = 0;

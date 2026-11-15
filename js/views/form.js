@@ -48,7 +48,10 @@ export function render(el, params) {
   const vehs = vehiculosActivos();
   if (orig?.vehiculoId && !vehs.some((v) => v.id === orig.vehiculoId) && vehiculo(orig.vehiculoId)) vehs.push(vehiculo(orig.vehiculoId));
   const ultimaCarga = S.gastos.find((g) => g.vehiculoId && vehs.some((v) => v.id === g.vehiculoId));
-  f.vehiculoId = orig ? (orig.vehiculoId || SIN_VEHICULO) : (ultimaCarga?.vehiculoId || vehs[0]?.id || SIN_VEHICULO);
+  // En un gasto nuevo el vehículo arranca en "Ninguno"; al elegir Combustible se propone el último usado.
+  const vehPorDefecto = ultimaCarga?.vehiculoId || vehs[0]?.id || SIN_VEHICULO;
+  let vehElegidoAMano = !!orig;
+  f.vehiculoId = orig ? (orig.vehiculoId || SIN_VEHICULO) : SIN_VEHICULO;
   f.tanqueLleno = orig?.tanqueLleno ?? true;
 
   el.innerHTML = `
@@ -71,6 +74,7 @@ export function render(el, params) {
       <div id="comb-wrap" class="bloque" hidden>
         ${vehs.length ? `
         <div class="campo" style="margin-top:0"><span>Vehículo</span><div class="chips" id="vehs"></div></div>
+        <small id="comb-ayuda" style="display:block;margin-top:8px"></small>
         <div id="comb-datos">
           <div class="grid2">
             <label class="campo">Litros
@@ -129,6 +133,13 @@ export function render(el, params) {
   const esCombustible = () => cat(f.categoriaId).tipo === 'combustible' && !orig?.cuotaGrupo;
   /** Es una carga con datos de consumo: categoría de combustible y un vehículo elegido. */
   const esCargaVeh = () => esCombustible() && vehs.length > 0 && f.vehiculoId !== SIN_VEHICULO;
+  /** El rubro tiene las categorías de vehículos (Transporte): sus gastos se pueden asociar a un vehículo. */
+  const esRubroVeh = () => vehs.length > 0 && !!f.rubroId && catsDe(f.rubroId).some((c) => c.tipo);
+  /** Un gasto viejo de combustible se puede asociar a un vehículo sin litros ni odómetro: cuenta para el costo, no para el consumo. */
+  const soloAsociar = () => !!orig && !(orig.litros > 0) && $('#litros').value.trim() === '' && $('#odo').value.trim() === '';
+  const ajustarVehiculo = () => {
+    if (!vehElegidoAMano) f.vehiculoId = esCombustible() ? vehPorDefecto : SIN_VEHICULO;
+  };
   const pintarCuotas = () => {
     // El combustible va siempre en un pago: una carga partida en cuotas rompería el cálculo de consumo.
     const esCredito = medio(f.medioId).tipo === 'credito' && !esCombustible();
@@ -149,10 +160,13 @@ export function render(el, params) {
     ].filter(Boolean).join(' · ');
   };
   const pintarComb = () => {
-    $('#comb-wrap').hidden = !esCombustible();
+    $('#comb-wrap').hidden = !(esCombustible() || esRubroVeh());
     if (!vehs.length) return;
     chips('#vehs', [...vehs.map((v) => ({ id: v.id, nombre: v.alias })), { id: SIN_VEHICULO, nombre: 'Ninguno' }], f.vehiculoId, 'veh');
-    $('#comb-datos').hidden = f.vehiculoId === SIN_VEHICULO;
+    $('#comb-datos').hidden = !esCargaVeh();
+    $('#comb-ayuda').textContent = esCombustible()
+      ? (orig && !(orig.litros > 0) ? 'Podés dejar litros y odómetro vacíos: el gasto cuenta para el costo del vehículo, pero no para el consumo.' : '')
+      : 'Opcional. Elegí un vehículo para sumar este gasto a su costo (seguro, patente, peajes…).';
     pintarCombInfo();
   };
 
@@ -167,15 +181,15 @@ export function render(el, params) {
     f.rubroId = b.dataset.rubro;
     const cs = catsDe(f.rubroId);
     f.categoriaId = cs.length === 1 ? cs[0].id : null;
-    pintarRubros(); pintarCats(); pintarComb(); pintarCuotas();
+    ajustarVehiculo(); pintarRubros(); pintarCats(); pintarComb(); pintarCuotas();
   });
   $('#cats').addEventListener('click', (e) => {
     const b = e.target.closest('[data-cat]'); if (!b) return;
-    f.categoriaId = b.dataset.cat; pintarCats(); pintarComb(); pintarCuotas();
+    f.categoriaId = b.dataset.cat; ajustarVehiculo(); pintarCats(); pintarComb(); pintarCuotas();
   });
   $('#vehs')?.addEventListener('click', (e) => {
     const b = e.target.closest('[data-veh]'); if (!b) return;
-    f.vehiculoId = b.dataset.veh; pintarComb();
+    f.vehiculoId = b.dataset.veh; vehElegidoAMano = true; pintarComb();
   });
   $('#litros')?.addEventListener('input', pintarCombInfo);
   $('#monto').addEventListener('input', pintarCombInfo);
@@ -205,7 +219,9 @@ export function render(el, params) {
 
     // Datos de consumo: van en el mismo gasto, no en un registro aparte.
     const carga = { vehiculoId: null, litros: null, odometro: null, tanqueLleno: null };
-    if (esCargaVeh()) {
+    // Cualquier gasto del rubro de vehículos puede quedar asociado a uno, para sumar a su costo.
+    if ((esCombustible() || esRubroVeh()) && vehs.length && f.vehiculoId !== SIN_VEHICULO) carga.vehiculoId = f.vehiculoId;
+    if (esCargaVeh() && !soloAsociar()) {
       Object.assign(carga, {
         vehiculoId: f.vehiculoId, litros: round2(parseLitros($('#litros').value)),
         odometro: parseKm($('#odo').value), tanqueLleno: $('#lleno').checked,

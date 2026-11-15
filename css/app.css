@@ -368,3 +368,7 @@ ul.cats { list-style: none; padding: 0 0 0 14px; margin: 4px 0; }
 .badge.vencido { background: color-mix(in srgb, var(--coral) 16%, var(--sup)); color: var(--coral); }
 .badge.proximo { background: color-mix(in srgb, var(--acento) 30%, var(--sup)); color: var(--tinta); }
 .venc .badge { flex: none; }
+.a-chk { width: 22px; height: 22px; accent-color: var(--pino); margin: 0; flex: none; }
+.btn:disabled { opacity: .5; }
+.costos .fila b { font-weight: 600; }
+.filtro-veh { margin: -4px 0 14px; }

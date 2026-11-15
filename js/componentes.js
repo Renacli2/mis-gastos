@@ -54,3 +54,9 @@ export function filaVencimiento(v, textoVenc, conVehiculo = false) {
     <span class="badge ${v.estado}">${etiqueta}</span>
   </a>`;
 }
+
+/** Selector de vehículo para filtrar listados y reportes. El filtro elegido se comparte entre Gastos y Análisis. */
+export function selectVehiculo(id) {
+  const ops = S.vehiculos.map((v) => `<option value="${v.id}" ${v.id === S.vehFiltro ? "selected" : ""}>${esc(v.alias)}${v.activo === false ? " (inactivo)" : ""}</option>`).join("");
+  return `<select id="${id}" aria-label="Filtrar por vehículo"><option value="">Todos los vehículos</option>${ops}</select>`;
+}

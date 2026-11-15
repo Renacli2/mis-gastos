@@ -1,5 +1,5 @@
 import * as db from '../db.js';
-import { S, cargar, catsDe, rubro, cat, medio, aARS } from '../store.js';
+import { S, cargar, catsDe, rubro, cat, medio, aARS, vehiculo } from '../store.js';
 import { $, esc, uid, money, hoy, toast, descargar, round2 } from '../util.js';
 import { vacio } from '../componentes.js';
 import { VERSION_ACTUAL, buscarVersion, aplicarActualizacion } from '../update.js';
@@ -238,11 +238,12 @@ export function render(host, params) {
     if (d.a === 'exp-csv') {
       const q = (s) => `"${String(s ?? '').replace(/"/g, '""')}"`;
       const n = (v) => String(round2(v)).replace('.', ',');
-      const filas = [['Fecha', 'Monto', 'Moneda', 'Cotización', 'Monto ARS', 'Rubro', 'Categoría', 'Medio de pago', 'Descripción', 'Prescindible', 'Cuota', 'Fijo']];
+      const filas = [['Fecha', 'Monto', 'Moneda', 'Cotización', 'Monto ARS', 'Rubro', 'Categoría', 'Medio de pago', 'Descripción', 'Prescindible', 'Cuota', 'Fijo', 'Vehículo', 'Litros', 'Odómetro', 'Tanque lleno']];
       [...S.gastos].reverse().forEach((g) => filas.push([
         g.fecha, n(g.monto), g.moneda, g.cotizacion ? n(g.cotizacion) : '', n(aARS(g)),
         q(rubro(g.rubroId).nombre), q(cat(g.categoriaId).nombre), q(medio(g.medioId).nombre), q(g.descripcion),
         g.prescindible ? 'Sí' : 'No', g.cuotaTotal > 1 ? `${g.cuotaNro}/${g.cuotaTotal}` : '', g.recurrenteId ? 'Sí' : 'No',
+        q(vehiculo(g.vehiculoId)?.alias), g.litros > 0 ? n(g.litros) : '', g.odometro ?? '', g.litros > 0 ? (g.tanqueLleno ? 'Sí' : 'No') : '',
       ]));
       descargar(`mis-gastos-${hoy()}.csv`, '﻿' + filas.map((f) => f.join(';')).join('\r\n'), 'text/csv;charset=utf-8');
       return toast('CSV descargado');

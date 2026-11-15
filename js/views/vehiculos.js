@@ -1,5 +1,6 @@
 import * as db from '../db.js';
-import { S, cargar, vehiculo } from '../store.js';
+import { S, cargar, vehiculo, vehiculosActivos, cat, aARS } from '../store.js';
+import { costosVehiculo } from '../costos.js';
 import { cargasDe } from '../combustible.js';
 import { resumenConsumo } from '../consumo.js';
 import { historial } from '../servicios.js';
@@ -12,7 +13,11 @@ export const COMBUSTIBLES = ['Nafta', 'Nafta premium', 'Diésel', 'GNC', 'Eléct
 export const km = (n) => `${Math.round(n || 0).toLocaleString('es-AR')} km`;
 const entero = (v) => parseInt(String(v).replace(/\D/g, ''), 10);
 
+/** Gastos de combustible cargados antes de tener vehículos (o sin elegir uno). */
+export const cargasSinVehiculo = () => S.gastos.filter((g) => !g.vehiculoId && cat(g.categoriaId).tipo === 'combustible');
+
 export function render(el, params) {
+  if (params[0] === 'asociar') return asociar(el);
   if (params[0] === 'nuevo' || params[1] === 'editar') return formulario(el, params[0]);
   if (params[0]) return ficha(el, params[0]);
   lista(el);
@@ -37,8 +42,10 @@ function lista(el) {
       <span class="item-der"><span class="item-monto">${km(v.odometro)}</span><small>${esc(v.combustible)}</small></span>
     </a>`;
   };
+  const sueltas = vehiculosActivos().length ? cargasSinVehiculo().length : 0;
   el.innerHTML = `
     <div class="cab"><h1 class="titulo">Vehículos</h1>${engranaje}</div>
+    ${sueltas ? `<a class="card aviso" href="#/vehiculos/asociar">Tenés ${plural(sueltas, 'gasto', 'gastos')} de combustible sin vehículo. <b>Asociarlos</b></a>` : ''}
     ${S.vehiculos.length
       ? `<div class="lista">${S.vehiculos.map(fila).join('')}</div>`
       : vacio('Todavía no cargaste ningún vehículo. Agregá uno para registrar su combustible y sus servicios.')}
@@ -142,6 +149,9 @@ function ficha(el, id) {
   const ultimas = S.gastos.filter((g) => g.vehiculoId === v.id && g.litros > 0).slice(0, 5);
   const servicios = historial(S.servicios, v.id);
   const vencs = vencimientosDe(S.servicios, v, hoy());
+  const c = costosVehiculo(S.gastos, S.servicios, v.id, aARS, (id) => cat(id).tipo);
+  const filaCosto = (nombre, monto) => `<div class="fila"><span>${nombre}</span>
+    <span class="der"><b>${money(monto)}</b><small>${c.total ? Math.round((monto / c.total) * 100) : 0}%</small></span></div>`;
   const filaServicio = (s) => `<a class="item" href="#/servicios/${s.id}">
       <span class="item-txt"><b>${esc(s.tipo)}</b>
         <small>${[fechaCorta(s.fecha), km(s.odometro), s.taller].filter(Boolean).map(esc).join(' · ')}</small>
@@ -168,6 +178,20 @@ function ficha(el, id) {
 
     <section class="sec"><h2>Consumo</h2>${bloqueConsumo(r)}</section>
 
+    <section class="sec costos">
+      <div class="card-tit"><h2>Costos</h2><a class="link" href="#/gastos/vehiculo/${v.id}">Ver gastos</a></div>
+      ${c.total ? `
+        <div class="kpis" style="margin-top:10px">
+          <div class="kpi"><small>Costo total</small><b>${money(c.total)}</b></div>
+          <div class="kpi"><small>Costo por km</small><b>${c.porKm ? money(c.porKm) : '—'}</b></div>
+        </div>
+        ${filaCosto('Combustible', c.combustible)}${filaCosto('Servicios', c.servicios)}${filaCosto('Otros gastos', c.otros)}
+        <p class="nota">${c.porKm
+          ? `Costo por km sobre los ${c.km.toLocaleString('es-AR')} km registrados, del primer al último odómetro cargado.`
+          : 'El costo por km aparece cuando haya al menos dos registros de odómetro distintos (cargas o servicios).'}</p>`
+        : vacio('Todavía no hay gastos asociados a este vehículo.')}
+    </section>
+
     <section class="sec">
       <div class="card-tit"><h2>Servicios</h2>${v.activo === false ? '' : `<a class="btn chico" href="#/servicios/nuevo/${v.id}">Registrar servicio</a>`}</div>
       ${servicios.length ? `<div class="lista">${servicios.map(filaServicio).join('')}</div>`
@@ -192,4 +216,47 @@ function ficha(el, id) {
       },
     });
   }
+}
+
+function asociar(el) {
+  const vehs = vehiculosActivos();
+  const pendientes = cargasSinVehiculo();
+  if (!vehs.length) { location.hash = '#/vehiculos'; return; }
+  let elegido = vehs[0].id;
+
+  el.innerHTML = `
+    <a class="link volver" href="#/vehiculos">‹ Vehículos</a>
+    <h1 class="titulo">Asociar cargas</h1>
+    ${pendientes.length ? `
+      <p class="nota">Estos gastos de combustible no tienen vehículo. Al asociarlos pasan a contar en el costo del vehículo.
+        Para que también cuenten en el consumo, tocá uno y completá los litros y el odómetro.</p>
+      <div class="campo"><span>Asociar a</span><div class="chips" id="a-vehs"></div></div>
+      <div class="lista" style="margin-top:14px">
+        ${pendientes.map((g) => `<div class="item">
+          <input type="checkbox" class="a-chk" value="${g.id}" checked aria-label="Incluir el gasto del ${g.fecha.split('-').reverse().join('/')}">
+          <a class="item-txt" href="#/editar/${g.id}"><b>${g.fecha.split('-').reverse().join('/')}</b><small>${esc(g.descripcion || cat(g.categoriaId).nombre)} · tocá para completar litros</small></a>
+          <span class="item-monto">${money(g.monto, g.moneda)}</span></div>`).join('')}
+      </div>
+      <button class="btn primario" id="a-ok"></button>`
+      : vacio('No quedan gastos de combustible sin vehículo.')}`;
+  if (!pendientes.length) return;
+
+  const marcados = () => $$('.a-chk', el).filter((x) => x.checked).map((x) => x.value);
+  const pintar = () => {
+    $('#a-vehs').innerHTML = vehs.map((v) => `<button type="button" class="chip ${v.id === elegido ? 'sel' : ''}" data-v="${v.id}">${esc(v.alias)}</button>`).join('');
+    const n = marcados().length;
+    $('#a-ok').textContent = `Asociar ${plural(n, 'gasto', 'gastos')} a ${vehiculo(elegido).alias}`;
+    $('#a-ok').disabled = !n;
+  };
+  pintar();
+  $('#a-vehs').addEventListener('click', (e) => { const b = e.target.closest('[data-v]'); if (b) { elegido = b.dataset.v; pintar(); } });
+  $$('.a-chk', el).forEach((x) => x.addEventListener('change', pintar));
+  $('#a-ok').addEventListener('click', async () => {
+    const ids = new Set(marcados());
+    const cambios = pendientes.filter((g) => ids.has(g.id)).map((g) => ({ ...g, vehiculoId: elegido }));
+    await db.putMany('gastos', cambios);
+    await cargar();
+    toast(`${plural(cambios.length, 'gasto asociado', 'gastos asociados')} a ${vehiculo(elegido).alias}`);
+    location.hash = `#/vehiculos/${elegido}`;
+  });
 }
