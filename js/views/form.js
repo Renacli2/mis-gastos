@@ -2,6 +2,7 @@ import * as db from '../db.js';
 import { S, cargar, catsDe, medio, cat, vehiculo, vehiculosActivos } from '../store.js';
 import { $, $$, esc, uid, hoy, mesDe, sumarMeses, fechaEnMes, round2, money, toast } from '../util.js';
 import { cargasDe, validarCarga, precioPorLitro, odometroVehiculo } from '../combustible.js';
+import { htmlVoz, montarVoz } from '../voz-ui.js';
 
 const SIN_VEHICULO = 'ninguno';
 const km = (n) => `${Math.round(n || 0).toLocaleString('es-AR')} km`;
@@ -57,6 +58,7 @@ export function render(el, params) {
   el.innerHTML = `
     <h1 class="titulo">${orig ? 'Editar gasto' : 'Cargar gasto'}</h1>
     <form id="form" class="form" autocomplete="off">
+      ${orig ? '' : htmlVoz()}
       <div class="monto-wrap">
         <div class="seg" id="moneda">
           <button type="button" data-v="ARS">Pesos</button><button type="button" data-v="USD">Dólares</button>
@@ -201,6 +203,7 @@ export function render(el, params) {
   $('#monto').addEventListener('input', pintarCuotas);
   $('#cuotas').addEventListener('input', pintarCuotas);
   if (!orig) setTimeout(() => $('#monto').focus(), 50);
+  if (!orig) montarVoz({ onFrase: () => {} });
 
   $('#form').addEventListener('submit', async (e) => {
     e.preventDefault();

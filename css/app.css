@@ -372,3 +372,28 @@ ul.cats { list-style: none; padding: 0 0 0 14px; margin: 4px 0; }
 .btn:disabled { opacity: .5; }
 .costos .fila b { font-weight: 600; }
 .filtro-veh { margin: -4px 0 14px; }
+
+/* Carga por voz */
+.voz { background: var(--sup); border-radius: var(--r-forma); padding: 14px 16px; margin-bottom: 18px; }
+.voz-fila { display: flex; align-items: center; gap: 14px; }
+.voz-btn {
+  flex: none; width: 64px; height: 64px; border: 0; cursor: pointer; position: relative;
+  display: grid; place-items: center; border-radius: 22px 22px 6px 22px;
+  background: var(--pino); color: var(--pino-txt); transition: background .15s;
+}
+.voz-btn:focus-visible { outline: 3px solid var(--acento); outline-offset: 3px; }
+.voz-btn:disabled { opacity: .45; cursor: not-allowed; }
+.voz-btn.escuchando { background: var(--coral); color: #fff; }
+.voz-btn.escuchando::after {
+  content: ''; position: absolute; inset: 0; border-radius: inherit;
+  border: 3px solid var(--coral); animation: voz-pulso 1.2s ease-out infinite;
+}
+@keyframes voz-pulso { from { transform: scale(1); opacity: .9; } to { transform: scale(1.35); opacity: 0; } }
+.voz-txt { flex: 1; min-width: 0; }
+.voz-txt b { display: block; font-size: 16px; }
+.voz-txt small { display: block; color: var(--tinta2); font-size: 14px; margin-top: 2px; overflow-wrap: anywhere; }
+.voz-cancelar { flex: none; border: 0; background: transparent; cursor: pointer; padding: 12px 4px; }
+.voz-aviso { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--linea); font-size: 14px; color: var(--tinta2); }
+.voz-aviso p { margin: 0 0 8px; }
+.voz-aviso-btns { display: flex; align-items: center; gap: 16px; margin-top: 10px; }
+.voz-aviso-btns .link { border: 0; background: transparent; cursor: pointer; padding: 8px 0; }
