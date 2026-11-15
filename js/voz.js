@@ -5,9 +5,16 @@ const Reconocedor = () => window.SpeechRecognition || window.webkitSpeechRecogni
 
 export const soportaVoz = () => !!Reconocedor();
 
-/** Estado del permiso de micrófono sin pedirlo: 'granted', 'denied', 'prompt' o 'desconocido'. */
-export async function permisoMicrofono() {
-  try { return (await navigator.permissions.query({ name: 'microphone' })).state; } catch { return 'desconocido'; }
+/**
+ * Avisa el estado del permiso de micrófono sin pedirlo ('granted', 'denied' o 'prompt'), ahora y cada vez
+ * que cambie. Si el navegador no deja consultarlo, no avisa nada y el permiso se resuelve al tocar el botón.
+ */
+export async function observarPermiso(alCambiar) {
+  try {
+    const p = await navigator.permissions.query({ name: 'microphone' });
+    alCambiar(p.state);
+    p.onchange = () => alCambiar(p.state);
+  } catch { /* sin API de permisos */ }
 }
 
 /**
@@ -19,11 +26,13 @@ export async function permisoMicrofono() {
  */
 export function escuchar({ onParcial, onFin, onError, silencioMs = 8000, idiomas = ['es-AR', 'es-ES'] }) {
   let rec = null, reloj = null, idioma = 0;
+  // Tope total: aunque haya ruido de fondo, ninguna escucha dura más de 30 segundos.
+  const tope = setTimeout(() => { try { rec.stop(); } catch { /* ya cerrada */ } }, 30000);
   let final = '', parcial = '', error = null, cancelado = false, cerrado = false, reintentar = false;
 
   const cerrar = () => {
     if (cerrado) return;
-    cerrado = true; clearTimeout(reloj);
+    cerrado = true; clearTimeout(reloj); clearTimeout(tope);
     if (cancelado) return;
     if (error && error !== 'no-speech') onError(error); else onFin(`${final} ${parcial}`.trim());
   };
@@ -51,6 +60,6 @@ export function escuchar({ onParcial, onFin, onError, silencioMs = 8000, idiomas
 
   return {
     detener() { try { rec.stop(); } catch { cerrar(); } },
-    cancelar() { cancelado = true; clearTimeout(reloj); try { rec.abort(); } catch { /* ya estaba cerrado */ } },
+    cancelar() { cancelado = true; clearTimeout(reloj); clearTimeout(tope); try { rec.abort(); } catch { /* ya estaba cerrado */ } },
   };
 }

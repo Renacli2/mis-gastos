@@ -15,10 +15,19 @@ App web instalable (PWA) para registrar y analizar gastos personales desde Andro
   - Consumo en l/100 km y km/l, calculado entre tanques llenos.
   - Servicios y mantenimiento, con avisos de vencimiento por km o por fecha. Un servicio con costo genera su gasto.
   - Costo total y costo por km de cada vehículo, y filtro por vehículo en Gastos y Análisis.
+- Carga por voz (opcional): en "Cargar gasto", el botón de micrófono transcribe una frase como "gasté quince mil en supermercado" y completa el formulario. Nunca guarda solo.
+
+## Carga por voz
+- Usa la Web Speech API del navegador, en es-AR (o es-ES si no está). No hay backend ni claves. La transcripción la hace el navegador: en Chrome el audio va a los servidores de Google y necesita internet.
+- Solo escucha al tocar el micrófono. Se detiene al dejar de hablar, al tocar de nuevo, con Cancelar, a los 8 segundos de silencio o al salir de la pantalla.
+- Si el navegador no tiene reconocimiento de voz, el botón no aparece. Si el micrófono está bloqueado, queda deshabilitado con una explicación. La carga manual no depende de nada de esto.
+- La interpretación es por reglas, sin IA: `js/voz-numeros.js` (números hablados, "lucas", "palos") y `js/voz-interpretar.js` (monto, categoría, medio, vehículo, litros, odómetro, fecha). Lo ambiguo se ofrece como opciones; lo que no se entiende queda vacío.
+- **Para agregar palabras** ("Coto" → Supermercado), editar `js/voz-sinonimos.js`. Es solo una lista; las instrucciones están al principio del archivo.
 
 ## Cómo está organizado el código
 - `js/views/`: una pantalla por archivo.
 - `js/combustible.js`, `js/consumo.js`, `js/servicios.js`, `js/vencimientos.js`, `js/costos.js`: reglas y cálculos del módulo de vehículos, como funciones puras (no leen la base ni la pantalla).
+- `js/voz-numeros.js`, `js/voz-interpretar.js`: interpretación de lo dictado, también como funciones puras. `js/voz-sinonimos.js`: su configuración. `js/voz.js` y `js/voz-ui.js`: captura de voz y botón de micrófono.
 - `js/db.js`: base de datos local. `js/seed.js`: datos iniciales y migraciones.
 - `tests/`: tests de las funciones puras.
 
