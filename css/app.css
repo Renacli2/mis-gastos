@@ -470,3 +470,7 @@ dialog.hoja .chip.sel { background: var(--pino); }
 dialog.hoja select { width: 100%; background: var(--fondo); }
 dialog.hoja .campo { margin-top: 14px; }
 dialog.hoja .dp-btns { position: sticky; bottom: calc(-18px - env(safe-area-inset-bottom)); background: var(--sup); padding: 10px 0 calc(4px + env(safe-area-inset-bottom)); margin-bottom: calc(-18px - env(safe-area-inset-bottom)); }
+.pago-link { display: flex; flex-direction: column; min-width: 0; color: inherit; text-decoration: none; }
+.pago-link b { font-family: var(--display); font-stretch: 62%; font-size: 22px; font-weight: 800; }
+.pago-link small { color: var(--tinta2); font-size: 13px; }
+.fila .link[data-deshacer] { border: 0; background: transparent; cursor: pointer; padding: 10px 0; font-size: 13px; }

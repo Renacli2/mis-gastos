@@ -1,14 +1,15 @@
 // Servicios a pagar (luz, internet, patente…): lista, alta, edición y baja lógica.
-// Rutas: #/pagos · #/pagos/nuevo · #/pagos/<id>/editar
+// Rutas: #/pagos · #/pagos/nuevo · #/pagos/<id> (ficha) · #/pagos/<id>/editar · #/pagos/ocultos
 import * as db from '../db.js';
 import { S, cargar, cat, catsDe, medio } from '../store.js';
-import { $, $$, esc, uid, hoy, round2, toast } from '../util.js';
+import { $, $$, esc, uid, hoy, round2, toast, money, sum } from '../util.js';
 import { vacio, engranaje } from '../componentes.js';
 import {
   FRECUENCIAS, NOMBRE_FRECUENCIA, DIAS_AVISO, validarServicioPago, pendientesDe, siguienteVencimiento,
-  urgencia, textoUrgencia, enlaceSeguro,
+  urgencia, textoUrgencia, enlaceSeguro, historialPagos, montoReferencia,
 } from '../pagos.js';
-import { sincronizarVencimientos } from '../pagos-datos.js';
+import { sincronizarVencimientos, vencimientosActuales, ocultarVencimiento, restaurarVencimiento, deshacerPago } from '../pagos-datos.js';
+import { abrirPago } from '../dialogo-pago.js';
 
 const NINGUNA = '__ninguna';
 const OTRA = '__otra';
@@ -31,7 +32,115 @@ export function textoFrecuencia(s) {
 
 export function render(el, params) {
   if (params[0] === 'nuevo' || params[1] === 'editar') return formulario(el, params[0]);
+  if (params[0] === 'ocultos') return ocultos(el);
+  if (params[0]) return ficha(el, params[0]);
   lista(el);
+}
+
+/**
+ * Envuelve el contenido recién dibujado en un contenedor propio y lo devuelve. Los eventos van ahí
+ * (y no en el contenedor de la pantalla, que es siempre el mismo) para que no se acumulen al redibujar.
+ */
+function propio(el) {
+  const raiz = document.createElement('div');
+  raiz.append(...el.childNodes);
+  el.append(raiz);
+  return raiz;
+}
+
+const fechaCorta = (f) => `${f.slice(8, 10)}/${f.slice(5, 7)}/${f.slice(2, 4)}`;
+
+/** Fila de un vencimiento oculto con su botón para restaurarlo. */
+const filaOculto = (v, conNombre) => `<div class="fila">
+  <span>${conNombre ? `<b>${esc(servicioPago(v.servicioId)?.nombre || '—')}</b> ` : ''}<small>vencía el ${fechaLarga(v.fecha)}</small></span>
+  <button type="button" class="btn chico" data-restaurar="${esc(v.id)}">Restaurar</button></div>`;
+
+async function alRestaurar(e, volver) {
+  const b = e.target.closest('[data-restaurar]'); if (!b) return;
+  await restaurarVencimiento(b.dataset.restaurar);
+  toast('Vencimiento restaurado'); volver();
+}
+
+/** Ficha: próximos vencimientos, monto de referencia, historial de pagos y ocultos del servicio. */
+function ficha(el, id) {
+  const s = servicioPago(id);
+  if (!s) { location.hash = '#/pagos'; return; }
+  const hist = historialPagos(s.id, S.vencimientosPago, S.gastos);
+  const ref = montoReferencia(s, hist);
+  const pendientes = vencimientosActuales().filter((x) => x.servicioId === s.id);
+  const ocultosS = S.vencimientosPago.filter((v) => v.servicioId === s.id && v.estado === 'oculto').sort((a, b) => b.fecha.localeCompare(a.fecha));
+  const enlace = enlaceSeguro(s.enlace);
+  const como = [...new Set([s.appPago, s.medioId ? medio(s.medioId).nombre : ''].filter(Boolean))].join(' · ');
+  const anio = hoy().slice(0, 4);
+  const delAnio = hist.filter((h) => h.fechaPago.startsWith(anio) && h.moneda === 'ARS');
+
+  el.innerHTML = `
+    <div class="cab"><h1 class="titulo">${esc(s.nombre)}</h1>
+      <a class="icono-btn" href="#/pagos/${s.id}/editar" aria-label="Editar servicio"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/></svg></a></div>
+    <p class="nota">${esc(textoFrecuencia(s))} · ${esc(cat(s.categoriaId).nombre || 'sin categoría')}${como ? ` · ${esc(como)}` : ''}</p>
+    ${s.activo === false ? '<p class="card aviso">Este servicio está dado de baja: no genera vencimientos. Podés reactivarlo desde Editar.</p>' : ''}
+    ${enlace ? `<a class="btn" href="${esc(enlace)}" target="_blank" rel="noopener noreferrer">Ir a pagar ↗</a>` : ''}
+
+    <div class="kpis" style="margin-top:14px">
+      <div class="kpi"><small>${ref?.origen === 'manual' ? 'Monto de referencia' : 'Último pago'}</small><b>${ref ? money(ref.monto, ref.moneda) : '—'}</b>
+        <small>${hist[0] ? `pagado el ${fechaCorta(hist[0].fechaPago)}` : ref ? 'cargado a mano' : 'todavía sin pagos'}</small></div>
+      <div class="kpi"><small>Pagado en ${anio}</small><b>${money(sum(delAnio.map((h) => h.monto)))}</b>
+        <small>${delAnio.length === 1 ? '1 pago' : `${delAnio.length} pagos`}${hist.some((h) => h.moneda !== 'ARS') ? ' en pesos' : ''}</small></div>
+    </div>
+
+    <section class="sec">
+      <div class="card-tit"><h2>Por pagar</h2></div>
+      ${pendientes.length ? `<div class="lista">${pendientes.map((x) => `<div class="fila">
+          <span><b>${fechaLarga(x.fecha)}</b> <span class="badge urg-${x.estado}">${esc(x.texto)}</span></span>
+          <span class="fila-der"><button type="button" class="btn chico" data-pagar="${esc(x.id)}">Pagar</button>
+            <button type="button" class="icono-btn" data-ocultar="${esc(x.id)}" aria-label="Ocultar el vencimiento del ${fechaLarga(x.fecha)}">✕</button></span>
+        </div>`).join('')}</div>`
+        : vacio(s.activo === false ? 'Sin vencimientos: el servicio está dado de baja.' : 'No hay vencimientos pendientes.')}
+    </section>
+
+    <section class="sec">
+      <div class="card-tit"><h2>Historial de pagos</h2></div>
+      ${hist.length ? `<div class="lista">${hist.map((h) => `<div class="fila">
+          <a class="pago-link" href="#/editar/${esc(h.gastoId)}"><b>${money(h.monto, h.moneda)}</b>
+            <small>pagado el ${fechaCorta(h.fechaPago)} · vencía el ${fechaCorta(h.vencimiento)}${h.appPago ? ` · ${esc(h.appPago)}` : ''}</small></a>
+          <button type="button" class="link" data-deshacer="${esc(h.vencimientoId)}">Deshacer</button>
+        </div>`).join('')}</div>
+        <p class="nota">Tocá un pago para ver o corregir su gasto.</p>`
+        : vacio('Todavía no registraste pagos de este servicio. Tildá un vencimiento en el inicio para cargar el primero.')}
+    </section>
+
+    ${ocultosS.length ? `<section class="sec">
+      <div class="card-tit"><h2>Ocultos</h2></div>
+      <div class="lista">${ocultosS.map((v) => filaOculto(v, false)).join('')}</div>
+    </section>` : ''}
+
+    <a class="btn" href="#/pagos">Volver a servicios a pagar</a>`;
+
+  const volver = () => ficha(el, id);
+  propio(el).addEventListener('click', async (e) => {
+    const pagar = e.target.closest('[data-pagar]');
+    if (pagar) { if (await abrirPago(pagar.dataset.pagar)) { toast('Pago registrado y gasto cargado'); volver(); } return; }
+    const ocultar = e.target.closest('[data-ocultar]');
+    if (ocultar) { await ocultarVencimiento(ocultar.dataset.ocultar); toast('Vencimiento oculto'); volver(); return; }
+    const deshacer = e.target.closest('[data-deshacer]');
+    if (deshacer) {
+      const h = hist.find((x) => x.vencimientoId === deshacer.dataset.deshacer);
+      if (!confirm(`¿Deshacer el pago de ${money(h.monto, h.moneda)}? Se borra el gasto y el vencimiento del ${fechaLarga(h.vencimiento)} vuelve a pendiente.`)) return;
+      await deshacerPago(h.vencimientoId); toast('Pago deshecho'); volver(); return;
+    }
+    alRestaurar(e, volver);
+  });
+}
+
+/** Todos los vencimientos ocultos, para verlos y restaurarlos. */
+function ocultos(el) {
+  const lista = S.vencimientosPago.filter((v) => v.estado === 'oculto').sort((a, b) => b.fecha.localeCompare(a.fecha));
+  el.innerHTML = `
+    <h1 class="titulo">Vencimientos ocultos</h1>
+    <p class="nota">Los que ocultaste no aparecen en el inicio ni generan gasto. Restaurá uno para que vuelva a quedar pendiente.</p>
+    ${lista.length ? `<div class="lista">${lista.map((v) => filaOculto(v, true)).join('')}</div>` : vacio('No hay vencimientos ocultos.')}
+    <a class="btn" href="#/pagos">Volver a servicios a pagar</a>`;
+  propio(el).addEventListener('click', (e) => alRestaurar(e, () => ocultos(el)));
 }
 
 /** Próximo vencimiento pendiente de un servicio (el más viejo primero: puede estar vencido). */
@@ -40,11 +149,12 @@ const proximoPendiente = (s) => S.vencimientosPago.find((v) => v.servicioId === 
 function lista(el) {
   const activos = S.serviciosPago.filter((s) => s.activo !== false);
   const pausados = S.serviciosPago.filter((s) => s.activo === false);
+  const nOcultos = S.vencimientosPago.filter((v) => v.estado === 'oculto').length;
   const fila = (s) => {
     const v = s.activo !== false ? proximoPendiente(s) : null;
     const u = v ? urgencia(v.fecha, hoy(), s.diasAviso ?? DIAS_AVISO) : null;
     const como = [...new Set([s.appPago, s.medioId ? medio(s.medioId).nombre : ''].filter(Boolean))].join(' · ');
-    return `<a class="item ${s.activo === false ? 'inactivo' : ''}" href="#/pagos/${s.id}/editar">
+    return `<a class="item ${s.activo === false ? 'inactivo' : ''}" href="#/pagos/${s.id}">
       <span class="item-txt"><b>${esc(s.nombre)}</b><small>${esc(textoFrecuencia(s))}${como ? ` · ${esc(como)}` : ''}</small>
         ${s.activo === false ? '<span class="badges"><span class="badge">pausado</span></span>' : ''}</span>
       ${u ? `<span class="item-der"><span class="badge urg-${u.estado}">${esc(textoUrgencia(u, v.fecha))}</span></span>` : ''}
@@ -56,7 +166,8 @@ function lista(el) {
     ${activos.length ? `<div class="lista">${activos.map(fila).join('')}</div>`
       : vacio('Todavía no cargaste ningún servicio a pagar. Agregá uno para que la app te recuerde sus vencimientos.')}
     ${pausados.length ? `<h2 class="subtit">Pausados</h2><div class="lista">${pausados.map(fila).join('')}</div>` : ''}
-    <a class="btn primario" href="#/pagos/nuevo">Agregar servicio</a>`;
+    <a class="btn primario" href="#/pagos/nuevo">Agregar servicio</a>
+    ${nOcultos ? `<a class="btn" href="#/pagos/ocultos">Vencimientos ocultos (${nOcultos})</a>` : ''}`;
 }
 
 function formulario(el, id) {
@@ -112,7 +223,7 @@ function formulario(el, id) {
       ${orig ? (orig.activo === false
         ? '<button class="btn" type="button" id="p-activar">Reactivar</button>'
         : '<button class="btn peligro" type="button" id="p-pausar">Dar de baja</button>') : ''}
-      <a class="btn" href="#/pagos">Cancelar</a>
+      <a class="btn" href="${orig ? `#/pagos/${orig.id}` : '#/pagos'}">Cancelar</a>
     </form>`;
 
   const chips = (cont, items, sel, attr) => {
@@ -190,7 +301,7 @@ function formulario(el, id) {
     await cargar();
     await sincronizarVencimientos();
     toast(mensaje);
-    location.hash = '#/pagos';
+    location.hash = orig ? `#/pagos/${datos.id}` : '#/pagos';
   };
 
   $('#form-p').addEventListener('submit', async (e) => {
@@ -223,7 +334,7 @@ function formulario(el, id) {
     await db.put('serviciosPago', { ...orig, activo: false });
     await cargar();
     toast('Servicio dado de baja');
-    location.hash = '#/pagos';
+    location.hash = `#/pagos/${orig.id}`;
   });
   // Al reactivar no se reclaman los vencimientos del tiempo en pausa.
   $('#p-activar')?.addEventListener('click', async () => {
@@ -231,6 +342,6 @@ function formulario(el, id) {
     await cargar();
     await sincronizarVencimientos();
     toast('Servicio reactivado');
-    location.hash = '#/pagos';
+    location.hash = `#/pagos/${orig.id}`;
   });
 }

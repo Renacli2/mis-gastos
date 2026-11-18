@@ -17,6 +17,19 @@ App web instalable (PWA) para registrar y analizar gastos personales desde Andro
   - Costo total y costo por km de cada vehículo, y filtro por vehículo en Gastos y Análisis.
 - Carga por voz (opcional): en "Cargar gasto", el botón de micrófono transcribe una frase como "gasté quince mil en supermercado" y completa el formulario. Nunca guarda solo.
 
+- Recordatorios de pago de servicios (luz, internet, patente): vencimientos mensuales, bimestrales, trimestrales, anuales o de única vez, en una tarjeta del inicio. Al tildar uno se ingresa el monto y se carga el gasto.
+
+## Recordatorios de pago
+- **Servicio a pagar** (tabla `serviciosPago`): nombre, categoría, frecuencia, fecha del próximo vencimiento, dónde se paga, medio de pago, enlace, días de aviso y monto de referencia opcional. No tiene monto fijo. Nunca guarda usuarios, claves ni números de tarjeta. La baja es lógica: el historial se conserva.
+- **Vencimiento** (tabla `vencimientosPago`): uno por servicio y fecha (`<servicioId>_<fecha>`), con estado pendiente, pagado u oculto. El monto y la fecha de pago se leen del gasto vinculado, así que editar ese gasto en Gastos también actualiza el historial; borrarlo devuelve el vencimiento a pendiente.
+- Los vencimientos se crean solos al abrir la app y al volver a ella: los que vencieron y falten, y siempre uno por delante. Un día 31 cae el último día de los meses más cortos. Nunca se duplican.
+- Las reglas están en `js/pagos.js` (funciones puras, con tests). `js/pagos-datos.js` lee y guarda en la base. `js/tarjeta-vencimientos.js` es la tarjeta, separada de los datos. `js/dialogo-pago.js` es el diálogo de pago. `js/views/pagos.js` tiene la lista, la ficha con el historial, el formulario y los ocultos.
+
+### Para más adelante: widget y avisos
+- `vencimientosActuales()` en `js/pagos-datos.js` devuelve una lista simple (servicio, fecha, estado, texto, enlace). Es lo que leerían un widget o un aviso, sin rehacer la lógica.
+- **Widget del sistema:** una PWA no puede crear widgets en la pantalla de Android. Hace falta empaquetarla como app Android (Bubblewrap / TWA) y escribir el widget nativo. Ese widget no puede leer el IndexedDB del navegador, así que habría que pasarle los datos de otra forma. Alternativa liviana: accesos directos del manifiesto al mantener apretado el ícono.
+- **Avisos:** con la app abierta se pueden mostrar notificaciones. Para avisar con la app cerrada hace falta un servidor de notificaciones push.
+
 ## Carga por voz
 - Usa la Web Speech API del navegador, en es-AR (o es-ES si no está). No hay backend ni claves. La transcripción la hace el navegador: en Chrome el audio va a los servidores de Google y necesita internet.
 - Solo escucha al tocar el micrófono. Se detiene al dejar de hablar, al tocar de nuevo, con Cancelar, a los 8 segundos de silencio o al salir de la pantalla.
@@ -28,11 +41,12 @@ App web instalable (PWA) para registrar y analizar gastos personales desde Andro
 - `js/views/`: una pantalla por archivo.
 - `js/combustible.js`, `js/consumo.js`, `js/servicios.js`, `js/vencimientos.js`, `js/costos.js`: reglas y cálculos del módulo de vehículos, como funciones puras (no leen la base ni la pantalla).
 - `js/voz-numeros.js`, `js/voz-interpretar.js`: interpretación de lo dictado, también como funciones puras. `js/voz-sinonimos.js`: su configuración. `js/voz.js` y `js/voz-ui.js`: captura de voz y botón de micrófono.
+- `js/pagos.js`: reglas de los recordatorios de pago, como funciones puras.
 - `js/db.js`: base de datos local. `js/seed.js`: datos iniciales y migraciones.
 - `tests/`: tests de las funciones puras.
 
 ## Datos y migraciones
-La base es IndexedDB y su esquema está en la versión 2. No hay nada que aplicar a mano: al abrir una versión nueva de la app, `js/db.js` crea las tablas que falten y `migrarDatos()` en `js/seed.js` completa los datos. Los gastos existentes no se modifican.
+La base es IndexedDB y su esquema está en la versión 3 (la 3 sumó los recordatorios de pago). No hay nada que aplicar a mano: al abrir una versión nueva de la app, `js/db.js` crea las tablas que falten y `migrarDatos()` en `js/seed.js` completa los datos. Los gastos existentes no se modifican.
 
 Para un cambio de esquema futuro: subir `VERSION` en `js/db.js`, agregar la tabla en `STORES` y sumar un paso en `migrarDatos()`.
 
