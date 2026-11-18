@@ -7,7 +7,7 @@ const ARCHIVOS = [
   'fonts/anybody.woff2', 'fonts/schibsted.woff2',
   'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png',
   'js/app.js', 'js/db.js', 'js/util.js', 'js/store.js', 'js/seed.js', 'js/charts.js', 'js/update.js',
-  'js/componentes.js', 'js/recurrentes.js', 'js/voz.js', 'js/voz-ui.js', 'js/voz-numeros.js', 'js/voz-interpretar.js', 'js/voz-sinonimos.js', 'js/combustible.js', 'js/consumo.js', 'js/servicios.js', 'js/vencimientos.js', 'js/costos.js', 'js/pagos.js', 'js/pagos-datos.js',
+  'js/componentes.js', 'js/recurrentes.js', 'js/voz.js', 'js/voz-ui.js', 'js/voz-numeros.js', 'js/voz-interpretar.js', 'js/voz-sinonimos.js', 'js/combustible.js', 'js/consumo.js', 'js/servicios.js', 'js/vencimientos.js', 'js/costos.js', 'js/pagos.js', 'js/pagos-datos.js', 'js/tarjeta-vencimientos.js',
   'js/views/pagos.js', 'js/views/vehiculos.js', 'js/views/servicios.js', 'js/views/inicio.js', 'js/views/gastos.js', 'js/views/form.js', 'js/views/analisis.js', 'js/views/ajustes.js',
 ];
 

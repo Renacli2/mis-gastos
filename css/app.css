@@ -419,3 +419,29 @@ ul.cats { list-style: none; padding: 0 0 0 14px; margin: 4px 0; }
 .badge.urg-hoy { background: color-mix(in srgb, var(--coral) 18%, var(--sup)); color: var(--coral); }
 .badge.urg-proximo { background: color-mix(in srgb, var(--acento) 30%, var(--sup)); color: var(--tinta); }
 .badge.urg-mas-adelante { background: var(--sup2); color: var(--tinta2); }
+
+/* Tarjeta "Próximos vencimientos" */
+.pv { margin-top: 14px; }
+.pv-item { display: flex; align-items: flex-start; gap: 12px; padding: 10px 0 4px; }
+.pv-item + .pv-item { border-top: 1px solid var(--linea); }
+.pv-tilde {
+  flex: none; width: 44px; height: 44px; margin-top: -2px; border-radius: 14px 14px 4px 14px; cursor: pointer;
+  display: grid; place-items: center; background: transparent; color: transparent;
+  border: 2px solid color-mix(in srgb, var(--tinta2) 55%, transparent); transition: background .15s, color .15s;
+}
+.pv-tilde:hover, .pv-tilde:focus-visible { color: var(--verde); border-color: var(--verde); }
+.pv-tilde:active { background: color-mix(in srgb, var(--verde) 18%, transparent); }
+.pv-tilde:focus-visible { outline: 3px solid var(--acento); outline-offset: 2px; }
+.pv-item.urg-vencido .pv-tilde, .pv-item.urg-hoy .pv-tilde { border-color: var(--coral); }
+.pv-txt { flex: 1; min-width: 0; }
+.pv-cab { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.pv-cab b { font-size: 16px; min-width: 0; overflow-wrap: anywhere; }
+.pv-cab .badge { flex: none; }
+.pv-txt small { display: block; color: var(--tinta2); font-size: 13px; margin-top: 1px; overflow-wrap: anywhere; }
+.pv-acc { display: flex; flex-wrap: wrap; gap: 0 18px; margin-top: 0; }
+.pv-acc .link, .pv-oculto .link, .pv-mas { font-size: 13px; border: 0; background: transparent; padding: 6px 0; cursor: pointer; text-decoration: none; }
+
+.pv-vacio { color: var(--tinta2); font-size: 14px; margin: 6px 0 10px; }
+.pv-vacio b { color: var(--tinta); }
+.pv-oculto { font-size: 13px; color: var(--tinta2); background: var(--fondo); border-radius: 10px; padding: 4px 12px; margin: 6px 0; }
+.pv-mas { display: inline-block; margin-top: 4px; }

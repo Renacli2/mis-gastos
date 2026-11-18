@@ -3,6 +3,13 @@ import { $, $$, esc, money, pct, sum, sumarMeses, hoy, mesActual, toast, nombreM
 import { selectorMes, itemGasto, vacio, barra, filaVencimiento } from '../componentes.js';
 import { avisos, textoVencimiento } from '../vencimientos.js';
 import { pendientes, cargarPendiente, omitirPendiente } from '../recurrentes.js';
+import { paraTarjeta } from '../pagos.js';
+import { vencimientosActuales, ocultarVencimiento, restaurarVencimiento } from '../pagos-datos.js';
+import { htmlTarjeta, montarTarjeta } from '../tarjeta-vencimientos.js';
+
+// Vencimientos recién ocultados: se ofrece deshacer mientras sigas en el inicio.
+let ocultados = [];
+let conservarOcultados = false;
 
 const entero = (n) => Math.round(n).toLocaleString('es-AR');
 
@@ -35,6 +42,13 @@ export function render(el) {
   const pend = pendientes();
   const hayUSD = S.gastos.some((g) => g.moneda === 'USD');
   const venc = avisos(S.servicios, S.vehiculos, hoy());
+  if (!conservarOcultados) ocultados = [];
+  conservarOcultados = false;
+  const tarjetaPagos = htmlTarjeta({
+    ...paraTarjeta(vencimientosActuales()),
+    hayServicios: S.serviciosPago.some((s) => s.activo !== false),
+    ocultados,
+  });
 
   // Ritmo: lo gastado hasta hoy vs. lo que llevabas el mes anterior al mismo día
   const dia = esActual ? +hoy().slice(8) : 31;
@@ -72,6 +86,8 @@ export function render(el) {
 
     ${hayUSD && !S.cot ? '<a class="card aviso" href="#/ajustes/dolar" style="margin-top:14px">Cargá la cotización del dólar en Ajustes para convertir tus gastos en USD.</a>' : ''}
 
+    ${tarjetaPagos}
+
     ${venc.length ? `<section class="card" style="margin-top:14px">
       <div class="card-tit"><h2>Servicios del vehículo</h2><a href="#/vehiculos" class="link">Ver vehículos</a></div>
       <div class="lista">${venc.map((x) => filaVencimiento(x, textoVencimiento(x), true)).join("")}</div>
@@ -101,6 +117,23 @@ export function render(el) {
     </section>`;
 
   const listo = async (msg) => { await cargar(); toast(msg); S.rerender(); };
+
+  montarTarjeta(el, {
+    // El diálogo de pago llega en la etapa (d).
+    onPagar: () => toast('Pronto: acá vas a cargar el monto pagado'),
+    onOcultar: async (id) => {
+      const v = await ocultarVencimiento(id);
+      if (!v) return;
+      const s = S.serviciosPago.find((x) => x.id === v.servicioId);
+      ocultados = [...ocultados, { id, nombre: s?.nombre || '', fecha: v.fecha }];
+      conservarOcultados = true; S.rerender();
+    },
+    onDeshacer: async (id) => {
+      await restaurarVencimiento(id);
+      ocultados = ocultados.filter((o) => o.id !== id);
+      conservarOcultados = true; S.rerender();
+    },
+  });
   $('#cargar-todos')?.addEventListener('click', async () => {
     for (const p of pend) await cargarPendiente(p);
     listo(pend.length > 1 ? `${pend.length} gastos fijos cargados` : 'Gasto cargado');
