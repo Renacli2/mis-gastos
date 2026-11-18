@@ -409,3 +409,13 @@ ul.cats { list-style: none; padding: 0 0 0 14px; margin: 4px 0; }
 }
 .voz-aviso-btns { display: flex; align-items: center; gap: 16px; margin-top: 10px; }
 .voz-aviso-btns .link { border: 0; background: transparent; cursor: pointer; padding: 8px 0; }
+
+/* Servicios a pagar */
+.subtit { margin: 26px 0 4px; }
+.form small.ayuda { display: block; margin-top: 6px; color: var(--tinta2); font-size: 13px; }
+.form small.ayuda:empty { display: none; }
+.badge[class*="urg-"] { white-space: nowrap; }
+.badge.urg-vencido { background: var(--coral); color: #fff; }
+.badge.urg-hoy { background: color-mix(in srgb, var(--coral) 18%, var(--sup)); color: var(--coral); }
+.badge.urg-proximo { background: color-mix(in srgb, var(--acento) 30%, var(--sup)); color: var(--tinta); }
+.badge.urg-mas-adelante { background: var(--sup2); color: var(--tinta2); }

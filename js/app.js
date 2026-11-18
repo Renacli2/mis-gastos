@@ -11,14 +11,15 @@ import * as analisis from './views/analisis.js';
 import * as ajustes from './views/ajustes.js';
 import * as vehiculos from './views/vehiculos.js';
 import * as servicios from './views/servicios.js';
+import * as pagos from './views/pagos.js';
 
-const RUTAS = { '': inicio, gastos, nuevo: form, editar: form, analisis, ajustes, vehiculos, servicios };
+const RUTAS = { '': inicio, gastos, nuevo: form, editar: form, analisis, ajustes, vehiculos, servicios, pagos };
 
 async function ruta() {
   const [path, ...params] = location.hash.replace(/^#\/?/, '').split('/');
   const vista = RUTAS[path] || inicio;
   destruirCharts();
-  $$('.nav a').forEach((a) => a.classList.toggle('activo', a.dataset.r === ({ editar: 'gastos', servicios: 'vehiculos' }[path] ?? path)));
+  $$('.nav a').forEach((a) => a.classList.toggle('activo', a.dataset.r === ({ editar: 'gastos', servicios: 'vehiculos', pagos: '' }[path] ?? path)));
   const el = $('#view');
   el.replaceChildren();
   try {

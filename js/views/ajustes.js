@@ -76,6 +76,15 @@ export function render(host, params) {
         <select id="nm-tipo">${Object.entries(TIPOS).map(([k, v]) => `<option value="${k}">${v}</option>`).join('')}</select>
         <button class="btn chico" data-a="medio-nuevo">Agregar</button></div>`)}
 
+    ${sec('pagos', 'Servicios a pagar', `
+      <p class="nota">Recordatorios de vencimientos con monto variable (luz, internet, patente). Tenés ${S.serviciosPago.filter((s) => s.activo !== false).length} activos.</p>
+      <a class="btn" href="#/pagos">Ver y editar servicios a pagar</a>
+      <p class="nota">Dónde los pagás. Solo el nombre: la app nunca guarda usuarios, claves ni números de tarjeta. Quitar uno no cambia los servicios que ya lo usan.</p>
+      ${S.appsPago.map((t, i) => `<div class="fila"><span>${esc(t)}</span>
+        <button class="icono-btn" data-app-borrar="${i}" aria-label="Quitar ${esc(t)}">✕</button></div>`).join('')}
+      <div class="inline nuevo"><input class="txt" id="na-nombre" maxlength="30" placeholder="Nueva (ej: Cuenta DNI)">
+        <button class="btn chico" data-a="app-nueva">Agregar</button></div>`)}
+
     ${sec('tipos', 'Tipos de servicio del vehículo', `
       <p class="nota">Lista que aparece al registrar un servicio. Quitar un tipo no cambia los servicios ya cargados.</p>
       ${S.tiposServicio.map((t, i) => `<div class="fila"><span>${esc(t)}</span>
@@ -178,6 +187,16 @@ export function render(host, params) {
       if (S.tiposServicio.length <= 1) return toast('Tiene que quedar al menos un tipo de servicio');
       await db.setConfig('tiposServicio', S.tiposServicio.filter((_, i) => i !== +d.tipoBorrar));
       return ok('Tipo quitado');
+    }
+    if (d.appBorrar) {
+      await db.setConfig('appsPago', S.appsPago.filter((_, i) => i !== +d.appBorrar));
+      return ok('Quitada de la lista');
+    }
+    if (d.a === 'app-nueva') {
+      const nombre = $('#na-nombre').value.trim(); if (!nombre) return;
+      if (S.appsPago.some((t) => t.toLowerCase() === nombre.toLowerCase())) return toast('Ya está en la lista');
+      await db.setConfig('appsPago', [...S.appsPago, nombre]);
+      return ok('Agregada');
     }
     if (d.a === 'tipo-nuevo') {
       const nombre = $('#nt-nombre').value.trim(); if (!nombre) return;
