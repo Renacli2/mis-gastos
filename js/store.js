@@ -4,6 +4,7 @@ import { mesActual } from './util.js';
 export const S = {
   rubros: [], categorias: [], medios: [], presupuestos: {}, recurrentes: [], gastos: [],
   vehiculos: [], servicios: [], tiposServicio: [], vehFiltro: '',
+  serviciosPago: [], vencimientosPago: [], appsPago: [],
   cot: 0, cotFecha: '', mes: mesActual(),
   rerender: () => {},
 };
@@ -23,6 +24,9 @@ export async function cargar() {
   S.vehiculos = (await db.all('vehiculos')).sort((a, b) => (b.activo !== false) - (a.activo !== false) || a.alias.localeCompare(b.alias));
   S.servicios = (await db.all('servicios')).sort((a, b) => b.fecha.localeCompare(a.fecha));
   S.tiposServicio = await db.getConfig('tiposServicio', []);
+  S.serviciosPago = (await db.all('serviciosPago')).sort((a, b) => (b.activo !== false) - (a.activo !== false) || a.nombre.localeCompare(b.nombre));
+  S.vencimientosPago = (await db.all('vencimientosPago')).sort((a, b) => a.fecha.localeCompare(b.fecha));
+  S.appsPago = await db.getConfig('appsPago', []);
   S.cot = await db.getConfig('cotizacion', 0);
   S.cotFecha = await db.getConfig('cotizacionFecha', '');
 }

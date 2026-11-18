@@ -1,5 +1,5 @@
 const DB_NAME = 'mis-gastos';
-export const VERSION = 2;
+export const VERSION = 3;
 export const STORES = {
   gastos: 'id',
   rubros: 'id',
@@ -10,6 +10,8 @@ export const STORES = {
   config: 'clave',
   vehiculos: 'id',
   servicios: 'id',
+  serviciosPago: 'id',
+  vencimientosPago: 'id',
 };
 
 let dbp;

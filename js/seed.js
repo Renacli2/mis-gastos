@@ -49,12 +49,28 @@ export const TIPOS_SERVICIO = [
 // Categorías con comportamiento especial. Se reconocen por `tipo`, no por nombre, así se pueden renombrar.
 const CATS_ESPECIALES = { 'Combustible': 'combustible', 'Mantenimiento auto': 'mantenimiento' };
 
+// Aplicaciones o lugares de pago para los servicios a pagar. Editable desde Ajustes.
+export const APPS_PAGO = ['Homebanking', 'Mercado Pago', 'Rapipago', 'Pago Fácil', 'Débito automático', 'Billetera del banco'];
+
 /**
- * Migración de datos al esquema 2 (módulo de vehículos). No modifica ningún gasto:
- * marca las categorías de combustible y mantenimiento (o las crea si no están) y carga los tipos de servicio.
+ * Migraciones de datos, en orden. Cada paso corre una sola vez (lo registra en config 'datos').
+ * Ningún paso modifica gastos existentes.
  */
 export async function migrarDatos() {
-  if (await db.getConfig('datos', 1) >= 2) return;
+  const version = await db.getConfig('datos', 1);
+  if (version < 2) await migrarA2();
+  if (version < 3) {
+    // Esquema 3 (recordatorios de pago): las tablas las crea db.js; acá solo la lista de apps de pago.
+    if (!(await db.getConfig('appsPago', null))) await db.setConfig('appsPago', APPS_PAGO);
+    await db.setConfig('datos', 3);
+  }
+}
+
+/**
+ * Esquema 2 (módulo de vehículos): marca las categorías de combustible y mantenimiento
+ * (o las crea si no están) y carga los tipos de servicio.
+ */
+async function migrarA2() {
   const rubros = await db.all('rubros');
   const cats = await db.all('categorias');
   for (const [nombre, tipo] of Object.entries(CATS_ESPECIALES)) {

@@ -1,5 +1,6 @@
 import { S, cargar } from './store.js';
 import { seedSiHaceFalta, migrarPaleta, migrarDatos } from './seed.js';
+import { sincronizarVencimientos } from './pagos-datos.js';
 import { $, $$, sumarMeses, toast } from './util.js';
 import { destruirCharts } from './charts.js';
 import { iniciarActualizaciones } from './update.js';
@@ -44,9 +45,15 @@ async function init() {
   await migrarPaleta();
   await migrarDatos();
   await cargar();
+  await sincronizarVencimientos();
   window.addEventListener('hashchange', ruta);
   await ruta();
   iniciarActualizaciones();
+  // Al volver a la app (por ejemplo, otro día) se crean los vencimientos que falten.
+  document.addEventListener('visibilitychange', async () => {
+    // Solo se redibuja el inicio: en otra pantalla podría haber un formulario a medio completar.
+    if (document.visibilityState === 'visible' && await sincronizarVencimientos() && ['', '#', '#/'].includes(location.hash)) ruta();
+  });
 }
 
 init().catch((err) => {
