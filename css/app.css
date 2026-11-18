@@ -445,3 +445,28 @@ ul.cats { list-style: none; padding: 0 0 0 14px; margin: 4px 0; }
 .pv-vacio b { color: var(--tinta); }
 .pv-oculto { font-size: 13px; color: var(--tinta2); background: var(--fondo); border-radius: 10px; padding: 4px 12px; margin: 6px 0; }
 .pv-mas { display: inline-block; margin-top: 4px; }
+
+/* Diálogo de pago: hoja que sube desde abajo */
+dialog.hoja {
+  width: 100%; max-width: 560px; max-height: 92vh; margin: auto auto 0; padding: 20px 18px calc(18px + env(safe-area-inset-bottom));
+  border: 0; border-radius: 26px 26px 0 0; background: var(--sup); color: var(--tinta); overflow-y: auto;
+}
+dialog.hoja::backdrop { background: rgba(5, 15, 13, .55); }
+dialog.hoja h2 { margin: 0; }
+dialog.hoja .monto-wrap { margin-top: 14px; }
+dialog.hoja input[type=text], dialog.hoja input[type=date] { background: var(--fondo); }
+dialog.hoja .chip { background: var(--fondo); }
+dialog.hoja .chip.sel { background: var(--pino); }
+.dp-sub { margin: 2px 0 0; color: var(--tinta2); font-size: 14px; }
+.dp-ref { margin: 4px 0 0; font-size: 14px; color: var(--tinta2); display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+.dp-ref b { color: var(--tinta); }
+.dp-ref .link { border: 0; background: transparent; cursor: pointer; padding: 6px 0; }
+.dp-nota { font-size: 13px; color: var(--tinta2); margin: 16px 0 0; }
+.dp-error { color: var(--coral); font-weight: 700; font-size: 14px; margin: 12px 0 0; }
+.dp-btns { display: grid; grid-template-columns: 1fr 2fr; gap: 10px; margin-top: 14px; }
+.dp-btns .btn { margin: 0; }
+@media (min-width: 600px) { dialog.hoja { margin: auto; border-radius: var(--r-forma); } }
+.pv-oculto.pagado { background: color-mix(in srgb, var(--verde) 14%, var(--sup)); color: var(--tinta); }
+dialog.hoja select { width: 100%; background: var(--fondo); }
+dialog.hoja .campo { margin-top: 14px; }
+dialog.hoja .dp-btns { position: sticky; bottom: calc(-18px - env(safe-area-inset-bottom)); background: var(--sup); padding: 10px 0 calc(4px + env(safe-area-inset-bottom)); margin-bottom: calc(-18px - env(safe-area-inset-bottom)); }

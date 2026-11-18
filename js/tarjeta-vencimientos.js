@@ -24,7 +24,8 @@ function item(x) {
 /**
  * datos = { items, resto, siguiente, total } de paraTarjeta(), más:
  *   hayServicios: si hay algún servicio activo
- *   ocultados: [{ id, nombre, fecha }] recién ocultados, para ofrecer deshacer
+ *   ocultados: acciones recientes para ofrecer deshacer:
+ *     [{ id, tipo: 'oculto', nombre, fecha }] o [{ id, tipo: 'pagado', texto }]
  *   destino: adónde lleva "Ver todos"
  */
 export function htmlTarjeta(datos) {
@@ -41,8 +42,10 @@ export function htmlTarjeta(datos) {
     cuerpo = `<div class="pv-lista">${items.map(item).join('')}</div>
       ${resto ? `<a class="link pv-mas" href="${destino}">y ${resto} más</a>` : ''}`;
   }
-  const deshacer = ocultados.map((o) => `<div class="pv-oculto" role="status">Ocultaste ${esc(o.nombre)} del ${ddmm(o.fecha)}.
-    <button type="button" class="link" data-deshacer="${esc(o.id)}">Deshacer</button></div>`).join('');
+  const deshacer = ocultados.map((o) => `<div class="pv-oculto ${o.tipo === 'pagado' ? 'pagado' : ''}" role="status">${o.tipo === 'pagado'
+      ? `Pagaste ${esc(o.texto)}.`
+      : `Ocultaste ${esc(o.nombre)} del ${ddmm(o.fecha)}.`}
+    <button type="button" class="link" data-deshacer="${esc(o.id)}" data-tipo="${o.tipo || 'oculto'}">Deshacer</button></div>`).join('');
   return `<section class="card pv" aria-labelledby="pv-tit">
     <div class="card-tit"><h2 id="pv-tit">Próximos vencimientos</h2>${hayServicios ? `<a href="${destino}" class="link">Ver todos</a>` : ''}</div>
     ${deshacer}${cuerpo}
@@ -58,6 +61,6 @@ export function montarTarjeta(raiz, { onPagar, onOcultar, onDeshacer }) {
     if (!b) return;
     if (b.dataset.pagar) onPagar?.(b.dataset.pagar);
     else if (b.dataset.ocultar) onOcultar?.(b.dataset.ocultar);
-    else onDeshacer?.(b.dataset.deshacer);
+    else onDeshacer?.(b.dataset.deshacer, b.dataset.tipo);
   });
 }

@@ -4,7 +4,8 @@ import { selectorMes, itemGasto, vacio, barra, filaVencimiento } from '../compon
 import { avisos, textoVencimiento } from '../vencimientos.js';
 import { pendientes, cargarPendiente, omitirPendiente } from '../recurrentes.js';
 import { paraTarjeta } from '../pagos.js';
-import { vencimientosActuales, ocultarVencimiento, restaurarVencimiento } from '../pagos-datos.js';
+import { vencimientosActuales, ocultarVencimiento, restaurarVencimiento, deshacerPago } from '../pagos-datos.js';
+import { abrirPago, textoPago } from '../dialogo-pago.js';
 import { htmlTarjeta, montarTarjeta } from '../tarjeta-vencimientos.js';
 
 // Vencimientos recién ocultados: se ofrece deshacer mientras sigas en el inicio.
@@ -119,17 +120,32 @@ export function render(el) {
   const listo = async (msg) => { await cargar(); toast(msg); S.rerender(); };
 
   montarTarjeta(el, {
-    // El diálogo de pago llega en la etapa (d).
-    onPagar: () => toast('Pronto: acá vas a cargar el monto pagado'),
+    onPagar: async (id) => {
+      const g = await abrirPago(id);
+      if (!g) return;
+      const v = S.vencimientosPago.find((x) => x.id === id);
+      const s = S.serviciosPago.find((x) => x.id === v?.servicioId);
+      ocultados = [...ocultados, { id, tipo: 'pagado', texto: textoPago(g, s?.nombre || '') }];
+      toast('Pago registrado y gasto cargado');
+      conservarOcultados = true; S.rerender();
+    },
     onOcultar: async (id) => {
       const v = await ocultarVencimiento(id);
       if (!v) return;
       const s = S.serviciosPago.find((x) => x.id === v.servicioId);
-      ocultados = [...ocultados, { id, nombre: s?.nombre || '', fecha: v.fecha }];
+      ocultados = [...ocultados, { id, tipo: 'oculto', nombre: s?.nombre || '', fecha: v.fecha }];
       conservarOcultados = true; S.rerender();
     },
-    onDeshacer: async (id) => {
-      await restaurarVencimiento(id);
+    onDeshacer: async (id, tipo) => {
+      if (tipo === 'pagado') {
+        const v = S.vencimientosPago.find((x) => x.id === id);
+        const g = S.gastos.find((x) => x.id === v?.gastoId);
+        if (!confirm(`¿Deshacer el pago? Se borra el gasto${g ? ` de ${money(g.monto, g.moneda)}` : ''} y el vencimiento vuelve a pendiente.`)) return;
+        await deshacerPago(id);
+        toast('Pago deshecho');
+      } else {
+        await restaurarVencimiento(id);
+      }
       ocultados = ocultados.filter((o) => o.id !== id);
       conservarOcultados = true; S.rerender();
     },

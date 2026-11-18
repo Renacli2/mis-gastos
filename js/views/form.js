@@ -5,6 +5,7 @@ import { cargasDe, validarCarga, precioPorLitro, odometroVehiculo } from '../com
 import { htmlVoz, montarVoz } from '../voz-ui.js';
 import { interpretar, textoEntendido } from '../voz-interpretar.js';
 import { SINONIMOS } from '../voz-sinonimos.js';
+import { sincronizarVencimientos } from '../pagos-datos.js';
 
 const SIN_VEHICULO = 'ninguno';
 const km = (n) => `${Math.round(n || 0).toLocaleString('es-AR')} km`;
@@ -38,6 +39,10 @@ export function render(el, params) {
   if (editId && !orig) { location.hash = '#/gastos'; return; }
   // El gasto de un servicio se edita desde el servicio, para que no queden desfasados.
   if (orig?.servicioId && S.servicios.some((s) => s.id === orig.servicioId)) { location.replace(`#/servicios/${orig.servicioId}`); return; }
+
+  // Gasto generado al pagar un servicio: se edita acá, y el vencimiento lee de él el monto y la fecha.
+  const vPago = orig?.vencimientoPagoId ? S.vencimientosPago.find((v) => v.id === orig.vencimientoPagoId && v.gastoId === orig.id) : null;
+  const pagoDe = vPago ? { v: vPago, servicio: S.serviciosPago.find((s) => s.id === vPago.servicioId) } : null;
 
   const f = orig
     ? { ...orig }
@@ -109,6 +114,8 @@ export function render(el, params) {
         <span><b>Repetir todos los meses</b><small>Se agrega como gasto fijo (alquiler, suscripciones…)</small></span></label>`}
 
       ${orig?.cuotaTotal > 1 ? `<p class="nota">Cuota ${orig.cuotaNro} de ${orig.cuotaTotal}. Los cambios se aplican solo a esta cuota.</p>` : ''}
+      ${pagoDe ? `<p class="nota">Este gasto es el pago de <b>${esc(pagoDe.servicio?.nombre || 'un servicio')}</b> (vencimiento del ${pagoDe.v.fecha.split('-').reverse().join('/')}). El historial del servicio toma el monto y la fecha de acá, así que los cambios se ven también ahí.${
+        pagoDe.servicio && f.categoriaId !== pagoDe.servicio.categoriaId ? ' Ojo: la categoría ya no es la del servicio.' : ''}</p>` : ''}
       <button class="btn primario" type="submit">${orig ? 'Guardar cambios' : 'Guardar gasto'}</button>
       ${orig ? '<button class="btn peligro" type="button" id="borrar">Eliminar</button>' : ''}
     </form>`;
@@ -348,11 +355,14 @@ export function render(el, params) {
         await db.del('gastos', orig.id);
       } else return;
     } else {
-      if (!confirm('¿Eliminar este gasto?')) return;
+      if (!confirm(pagoDe
+        ? `¿Eliminar este gasto? Es el pago de ${pagoDe.servicio?.nombre || 'un servicio'}: el vencimiento del ${pagoDe.v.fecha.split('-').reverse().join('/')} vuelve a quedar pendiente.`
+        : '¿Eliminar este gasto?')) return;
       await db.del('gastos', orig.id);
     }
     if (orig.vehiculoId) await actualizarOdometro(orig.vehiculoId, orig.odometro);
     await cargar();
+    if (pagoDe) await sincronizarVencimientos();   // el vencimiento vuelve a pendiente
     toast('Eliminado');
     history.back();
   });
