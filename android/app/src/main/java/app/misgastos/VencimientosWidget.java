@@ -35,6 +35,7 @@ import java.util.Locale;
 public class VencimientosWidget extends AppWidgetProvider {
 
     static final String ACCION_NUEVO_DIA = "app.misgastos.widget.NUEVO_DIA";
+    static final String ACCION_OCULTAR = "app.misgastos.widget.OCULTAR";
     private static final int FILAS = 3;
     private static final int DIAS_COPIA_VIEJA = 7;
 
@@ -44,6 +45,7 @@ public class VencimientosWidget extends AppWidgetProvider {
     private static final int[] NOMBRE = { R.id.w_nombre1, R.id.w_nombre2, R.id.w_nombre3 };
     private static final int[] ESTADO = { R.id.w_estado1, R.id.w_estado2, R.id.w_estado3 };
     private static final int[] SUB = { R.id.w_sub1, R.id.w_sub2, R.id.w_sub3 };
+    private static final int[] OCULTAR = { R.id.w_ocultar1, R.id.w_ocultar2, R.id.w_ocultar3 };
 
     // ---------- Ciclo de vida ----------
 
@@ -62,6 +64,10 @@ public class VencimientosWidget extends AppWidgetProvider {
     public void onReceive(Context context, Intent intent) {
         super.onReceive(context, intent);
         String a = intent.getAction();
+        if (ACCION_OCULTAR.equals(a)) {
+            ocultar(context, intent.getStringExtra("id"), intent.getStringExtra("nombre"));
+            return;
+        }
         if (ACCION_NUEVO_DIA.equals(a) || Intent.ACTION_TIME_CHANGED.equals(a) || Intent.ACTION_TIMEZONE_CHANGED.equals(a)) {
             actualizarTodos(context);
             programarMedianoche(context);
@@ -72,6 +78,41 @@ public class VencimientosWidget extends AppWidgetProvider {
     public void onDisabled(Context context) {
         AlarmManager am = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
         if (am != null) am.cancel(intentoNuevoDia(context));
+    }
+
+    /**
+     * ✕ en el widget: el vencimiento deja de mostrarse enseguida y queda anotado en la cola de acciones.
+     * La app lo oculta de verdad al abrirse (y desde ahí se puede restaurar), así la base sigue siendo una sola.
+     */
+    static void ocultar(Context context, String id, String nombre) {
+        if (id == null || id.isEmpty()) return;
+        try {
+            JSONObject accion = new JSONObject();
+            accion.put("tipo", "ocultar");
+            accion.put("id", id);
+            WidgetDatosPlugin.encolarAccion(context, accion);
+        } catch (JSONException e) {
+            return;
+        }
+        actualizarTodos(context);
+        android.widget.Toast.makeText(context,
+                "Ocultaste " + (nombre != null ? nombre : "el vencimiento") + ". Lo podés restaurar desde la app.",
+                android.widget.Toast.LENGTH_SHORT).show();
+    }
+
+    /** Ids que el widget pidió ocultar y la app todavía no aplicó: no se muestran. */
+    static java.util.Set<String> ocultosPendientes(Context context) {
+        java.util.Set<String> ids = new java.util.HashSet<>();
+        try {
+            JSONArray cola = new JSONArray(WidgetDatosPlugin.prefs(context).getString(WidgetDatosPlugin.CLAVE_ACCIONES, "[]"));
+            for (int i = 0; i < cola.length(); i++) {
+                JSONObject a = cola.optJSONObject(i);
+                if (a != null && "ocultar".equals(a.optString("tipo"))) ids.add(a.optString("id"));
+            }
+        } catch (JSONException e) {
+            // cola dañada: no se excluye nada
+        }
+        return ids;
     }
 
     /** Redibuja todos los widgets puestos. Lo llama el plugin cuando la app cambia los datos. */
@@ -117,7 +158,7 @@ public class VencimientosWidget extends AppWidgetProvider {
         Item siguiente;
     }
 
-    static Vista calcular(String json, long hoy) {
+    static Vista calcular(String json, long hoy, java.util.Set<String> excluir) {
         Vista v = new Vista();
         if (json == null) return v;
         try {
@@ -137,7 +178,7 @@ public class VencimientosWidget extends AppWidgetProvider {
                 it.fecha = o.optString("fecha");
                 it.appPago = o.optString("appPago", "");
                 it.medio = o.optString("medio", "");
-                if (it.fecha.length() != 10) continue;
+                if (it.fecha.length() != 10 || excluir.contains(it.id)) continue;
                 it.dias = (int) (diaDe(it.fecha) - hoy);
                 int aviso = o.optInt("diasAviso", 5);
                 // Igual que urgencia() en js/pagos.js
@@ -191,7 +232,7 @@ public class VencimientosWidget extends AppWidgetProvider {
 
     static void dibujar(Context context, AppWidgetManager mgr, int widgetId) {
         String json = WidgetDatosPlugin.prefs(context).getString(WidgetDatosPlugin.CLAVE_DATOS, null);
-        Vista vista = calcular(json, hoy());
+        Vista vista = calcular(json, hoy(), ocultosPendientes(context));
         RemoteViews rv = new RemoteViews(context.getPackageName(), R.layout.widget_vencimientos);
 
         // Cuántas filas entran según el alto actual del widget (en dp)
@@ -199,7 +240,7 @@ public class VencimientosWidget extends AppWidgetProvider {
         int alto = op != null ? op.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, 0) : 0;
         int filas = alto > 0 ? Math.max(1, Math.min(FILAS, (alto - 44) / 44)) : FILAS;
 
-        int base = widgetId * 10;
+        int base = widgetId * 20;   // códigos distintos por widget y por botón, para que Android no mezcle los toques
         rv.setOnClickPendingIntent(R.id.w_cabecera, abrir(context, "misgastos://pagos", base));
 
         String vacio = null;
@@ -238,6 +279,8 @@ public class VencimientosWidget extends AppWidgetProvider {
             rv.setTextViewText(SUB[i], subtitulo(it));
             rv.setOnClickPendingIntent(TILDE[i], abrir(context, "misgastos://pagar/" + Uri.encode(it.id), base + 2 + i));
             rv.setOnClickPendingIntent(TXT[i], abrir(context, "misgastos://servicio/" + Uri.encode(it.servicioId), base + 5 + i));
+            rv.setContentDescription(OCULTAR[i], "Ocultar " + it.nombre + " del " + ddmm(it.fecha));
+            rv.setOnClickPendingIntent(OCULTAR[i], pedirOcultar(context, it, base + 10 + i));
         }
 
         rv.setViewVisibility(R.id.w_vacio, vacio == null ? View.GONE : View.VISIBLE);
@@ -260,6 +303,15 @@ public class VencimientosWidget extends AppWidgetProvider {
         if (!it.appPago.isEmpty()) partes.add(it.appPago);
         if (!it.medio.isEmpty()) partes.add(it.medio);
         return android.text.TextUtils.join(" · ", partes);
+    }
+
+    /** Toque en la ✕: le llega al propio widget (sin abrir la app). */
+    static PendingIntent pedirOcultar(Context context, Item it, int codigo) {
+        Intent i = new Intent(context, VencimientosWidget.class)
+                .setAction(ACCION_OCULTAR)
+                .putExtra("id", it.id)
+                .putExtra("nombre", it.nombre);
+        return PendingIntent.getBroadcast(context, codigo, i, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
     }
 
     /** Abre la app en una pantalla concreta. La app web lee la dirección con WidgetDatos.tomarApertura(). */

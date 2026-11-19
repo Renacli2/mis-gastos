@@ -114,6 +114,10 @@
                 android:textColor="@color/w_tinta2"
                 android:textSize="12sp" />
         </LinearLayout>
+
+        <TextView
+            android:id="@+id/w_ocultar1"
+            style="@style/WidgetOcultar" />
     </LinearLayout>
 
     <!-- Fila 2 -->
@@ -184,6 +188,10 @@
                 android:textColor="@color/w_tinta2"
                 android:textSize="12sp" />
         </LinearLayout>
+
+        <TextView
+            android:id="@+id/w_ocultar2"
+            style="@style/WidgetOcultar" />
     </LinearLayout>
 
     <!-- Fila 3 -->
@@ -254,6 +262,10 @@
                 android:textColor="@color/w_tinta2"
                 android:textSize="12sp" />
         </LinearLayout>
+
+        <TextView
+            android:id="@+id/w_ocultar3"
+            style="@style/WidgetOcultar" />
     </LinearLayout>
 
     <!-- Estados sin filas: sin servicios, al día, o nunca se abrió la app -->
