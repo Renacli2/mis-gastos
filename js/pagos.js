@@ -165,6 +165,51 @@ export function datosWidget(lista, fecha, hayServicios, max = 12) {
   };
 }
 
+/** Fecha "AAAA-MM-DD" corrida `n` días (negativo: hacia atrás). En UTC, para que no influyan los husos horarios. */
+export function sumarDias(fecha, n) {
+  const [y, m, d] = fecha.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10);
+}
+
+/** Número entero estable (positivo, 31 bits) a partir de un texto: id de notificación para cada aviso. */
+export function idAviso(texto) {
+  let h = 7;
+  for (const c of texto) h = (Math.imul(h, 31) + c.codePointAt(0)) | 0;
+  return (h >>> 0) % 2147483647 || 1;
+}
+
+/**
+ * Avisos (notificaciones) a programar para los vencimientos pendientes:
+ *   - uno los "días de aviso" antes de cada vencimiento ("Mañana vence Luz", "Luz vence en 3 días");
+ *   - otro el mismo día ("Hoy vence Luz").
+ * A la hora elegida. Solo los que todavía no pasaron: nunca avisa de golpe cosas viejas.
+ * lista = proximosVencimientos(); ahora = { fecha: 'AAAA-MM-DD', minutos: minutos del día }.
+ * No calcula fechas reales (Date): devuelve fecha y hora, y el que programa las convierte a la hora del teléfono.
+ */
+export function planAvisos(lista, ahora, hora = 9) {
+  const futuro = (f) => f > ahora.fecha || (f === ahora.fecha && hora * 60 > ahora.minutos);
+  const como = (x) => [...new Set([x.appPago, x.medio].filter(Boolean))].join(' · ');
+  const avisos = [];
+  for (const x of lista) {
+    const detalle = `${como(x) ? `${como(x)}. ` : ''}Tocá para registrar el pago.`;
+    const dias = x.diasAviso ?? DIAS_AVISO;
+    if (dias > 0) {
+      const f = sumarDias(x.fecha, -dias);
+      if (futuro(f)) {
+        avisos.push({
+          id: idAviso(`${x.id}|antes`), vencimientoId: x.id, fecha: f, hora,
+          titulo: dias === 1 ? `Mañana vence ${x.nombre}` : `${x.nombre} vence en ${dias} días (${ddmm(x.fecha)})`,
+          cuerpo: detalle,
+        });
+      }
+    }
+    if (futuro(x.fecha)) {
+      avisos.push({ id: idAviso(`${x.id}|dia`), vencimientoId: x.id, fecha: x.fecha, hora, titulo: `Hoy vence ${x.nombre}`, cuerpo: detalle });
+    }
+  }
+  return avisos.sort((a, b) => a.fecha.localeCompare(b.fecha) || a.titulo.localeCompare(b.titulo));
+}
+
 /** Pagos de un servicio, del más nuevo al más viejo, leyendo monto y fecha del gasto vinculado. */
 export function historialPagos(servicioId, vencimientos, gastos) {
   const porId = new Map(gastos.map((g) => [g.id, g]));

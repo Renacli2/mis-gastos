@@ -110,4 +110,12 @@ npm run apk
 - Sin datos todavía, pide abrir la app; sin servicios, invita a cargarlos; si la copia tiene más de 7 días, avisa "Abrí la app para actualizar".
 - El botón "atrás" de Android usa `@capacitor/app`: cierra el diálogo abierto, vuelve a la pantalla anterior o, en el inicio, pasa la app a segundo plano.
 
+**Avisos de vencimiento** (`js/avisos.js`, plugin `@capacitor/local-notifications`):
+- Se activan en **Ajustes → Servicios a pagar → Avisarme de los vencimientos**. Ahí Android 13 o más nuevo pide el permiso de notificaciones (nunca antes). También se elige la hora aproximada (9:00 por defecto).
+- Por cada vencimiento pendiente: un aviso los "días de aviso" del servicio antes ("Mañana vence Luz", "Luz vence en 3 días") y otro el mismo día ("Hoy vence Luz"). Los arma `planAvisos()` de `js/pagos.js` (con tests): solo agenda los que todavía no pasaron.
+- Android los tiene agendados, así que llegan con la app cerrada y después de reiniciar el teléfono. Se reprograman cada vez que cambian los datos (pagar, ocultar, editar…) y al volver a la app. Desactivarlos cancela todos.
+- Usan hora aproximada (Android puede demorarlos hasta una hora para ahorrar batería): así no hace falta el permiso especial de "Alarmas y recordatorios", que se quita del manifiesto.
+- Tocar el aviso abre la app en el diálogo de pago de ese vencimiento.
+- Si se fuerza la detención de la app desde los ajustes de Android, Android borra los avisos agendados: vuelven al abrir la app.
+
 **Actualizar**: cada versión nueva es un APK nuevo, que se instala encima del anterior sin borrar los datos. Tiene que estar firmado con la misma clave que el anterior.

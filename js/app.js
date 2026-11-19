@@ -7,6 +7,7 @@ import { iniciarActualizaciones } from './update.js';
 import { esApp, plugin } from './plataforma.js';
 import { publicarWidget, aplicarAccionesWidget, aperturaWidget } from './widget-datos.js';
 import { abrirPago } from './dialogo-pago.js';
+import { programarAvisos, alTocarAviso } from './avisos.js';
 import * as inicio from './views/inicio.js';
 import * as gastos from './views/gastos.js';
 import * as form from './views/form.js';
@@ -36,6 +37,8 @@ async function ruta() {
 S.rerender = ruta;
 // Cada cambio en los datos deja al día la copia que lee el widget de Android (en el navegador no hace nada).
 alCargar(publicarWidget);
+// …y reprograma los avisos de vencimiento (si están activados).
+alCargar(programarAvisos);
 
 // Selector de mes compartido por todas las vistas
 document.addEventListener('click', (e) => {
@@ -66,13 +69,18 @@ if (esApp) {
   });
 }
 
-/**
- * Si la app se abrió tocando el widget, va a la pantalla pedida. Tocar el cuadrado de un vencimiento
- * abre el mismo diálogo de pago que la tarjeta del inicio (el monto cambia cada mes: hay que escribirlo).
- */
+/** Si la app se abrió tocando el widget, va a la pantalla pedida. */
 async function abrirDesdeWidget() {
   const d = await aperturaWidget();
-  if (!d) return;
+  if (d) await irA(d);
+}
+
+/**
+ * Va a una pantalla y, si se pide, abre el pago de un vencimiento: el mismo diálogo que la tarjeta
+ * del inicio (el monto cambia cada mes: hay que escribirlo). Lo usan el widget y las notificaciones.
+ * d = { ruta: '#/…', pagar: idVencimiento | null }
+ */
+async function irA(d) {
   if ((location.hash || '#/') !== d.ruta) {
     history.pushState(null, '', d.ruta);   // sin disparar hashchange: el redibujo lo hacemos acá y esperamos que termine
     await ruta();
@@ -86,6 +94,15 @@ async function abrirDesdeWidget() {
   if (await abrirPago(d.pagar)) { toast('Pago registrado y gasto cargado'); await ruta(); }
 }
 
+// Tocar una notificación de vencimiento abre su pago. Si la app arrancó por eso, espera a que termine de cargar.
+let avisarListo;
+const listo = new Promise((r) => { avisarListo = r; });
+alTocarAviso(async (vencimientoId) => {
+  await listo;
+  if (document.querySelector('dialog[open]')) return;   // ya hay un pago abierto: no se encima otro
+  await irA({ ruta: '#/', pagar: vencimientoId });
+});
+
 async function init() {
   if (navigator.storage?.persist) navigator.storage.persist().catch(() => {});
   await seedSiHaceFalta();
@@ -95,9 +112,11 @@ async function init() {
   await aplicarAccionesWidget();
   await sincronizarVencimientos();
   publicarWidget();
+  programarAvisos();
   window.addEventListener('hashchange', ruta);
   await ruta();
   await abrirDesdeWidget();
+  avisarListo();
   iniciarActualizaciones();
   // Al volver a la app (por ejemplo, otro día) se aplica lo pedido desde el widget y se crean los vencimientos que falten.
   document.addEventListener('visibilitychange', async () => {
@@ -105,6 +124,7 @@ async function init() {
     const delWidget = await aplicarAccionesWidget();
     const nuevos = await sincronizarVencimientos();
     publicarWidget();   // también cambia la fecha de la copia si pasó el día
+    programarAvisos();  // y deja de lado los avisos que ya pasaron
     // Solo se redibuja el inicio: en otra pantalla podría haber un formulario a medio completar.
     if ((delWidget || nuevos) && ['', '#', '#/'].includes(location.hash)) await ruta();
     await abrirDesdeWidget();

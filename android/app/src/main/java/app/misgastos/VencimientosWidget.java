@@ -254,7 +254,7 @@ public class VencimientosWidget extends AppWidgetProvider {
         } else if (vista.urgentes.isEmpty()) {
             vacio = vista.siguiente == null ? "Estás al día. No hay vencimientos pendientes."
                     : "Estás al día. El próximo es " + vista.siguiente.nombre + ": "
-                      + textoUrgencia(vista.siguiente).toLowerCase(new Locale("es", "AR")) + ".";
+                      + textoUrgencia(vista.siguiente).toLowerCase(Locale.forLanguageTag("es-AR")) + ".";
         } else {
             mostrados = Math.min(filas, vista.urgentes.size());
             int resto = vista.urgentes.size() - mostrados;

@@ -3,6 +3,7 @@ import {
   fechaVencimiento, siguienteVencimiento, vencimientosFaltantes, generarVencimientos, pendientesDe, reconciliar,
   urgencia, textoUrgencia, proximosVencimientos, paraTarjeta, historialPagos, montoReferencia,
   enlaceSeguro, validarServicioPago, validarPago, gastoDePago, idVencimiento, datosWidget,
+  planAvisos, sumarDias, idAviso,
 } from '../js/pagos.js';
 
 const serv = (extra) => ({ id: 's', nombre: 'Luz', categoriaId: 'cLuz', frecuencia: 'mensual', primerVenc: '2026-11-10', diasAviso: 5, activo: true, ...extra });
@@ -253,5 +254,34 @@ suite('Pagos · gasto generado', () => {
   test('al corregir conserva el id y lo que marcaste en el gasto', () => {
     const g = gastoDePago(s, v, { ...pago, id: 'nuevo', monto: 36000 }, { id: 'cLuz', rubroId: 'rServ' }, { id: 'g1', creado: 1, prescindible: true });
     igual([g.id, g.creado, g.prescindible, g.monto], ['g1', 1, true, 36000]);
+  });
+});
+
+suite('Pagos · avisos (notificaciones)', () => {
+  const item = (extra) => ({ id: 'luz_2026-11-25', servicioId: 'luz', nombre: 'Luz', fecha: '2026-11-25', diasAviso: 3, appPago: 'Mercado Pago', medio: 'Débito', ...extra });
+  const AHORA = { fecha: '2026-11-19', minutos: 10 * 60 };
+  test('sumar y restar días, también entre meses y años', () => {
+    igual([sumarDias('2026-12-02', -3), sumarDias('2026-12-30', 3), sumarDias('2024-03-01', -1)], ['2026-11-29', '2027-01-02', '2024-02-29']);
+  });
+  test('un aviso los días de aviso antes y otro el mismo día, a la hora elegida', () => {
+    const p = planAvisos([item()], AHORA, 9);
+    igual(p.map((a) => [a.fecha, a.hora, a.titulo]), [['2026-11-22', 9, 'Luz vence en 3 días (25/11)'], ['2026-11-25', 9, 'Hoy vence Luz']]);
+    igual(p[0].cuerpo, 'Mercado Pago · Débito. Tocá para registrar el pago.');
+    igual(p[0].vencimientoId, 'luz_2026-11-25');
+  });
+  test('"mañana" con un día de aviso; sin repetir app y medio iguales', () => {
+    const p = planAvisos([item({ diasAviso: 1, appPago: 'Mercado Pago', medio: 'Mercado Pago' })], AHORA);
+    igual([p[0].titulo, p[0].cuerpo], ['Mañana vence Luz', 'Mercado Pago. Tocá para registrar el pago.']);
+  });
+  test('no programa avisos que ya pasaron (ni los de hoy si ya pasó la hora)', () => {
+    igual(planAvisos([item({ fecha: '2026-11-21' })], AHORA, 9).map((a) => a.fecha), ['2026-11-21']);   // el de 3 días antes fue el 18
+    igual(planAvisos([item({ fecha: '2026-11-19' })], AHORA, 9), []);                                  // hoy a las 9, y son las 10
+    igual(planAvisos([item({ fecha: '2026-11-19' })], AHORA, 20).map((a) => a.titulo), ['Hoy vence Luz']);
+    igual(planAvisos([item({ fecha: '2026-11-10' })], AHORA), []);                                     // vencido: no insiste
+  });
+  test('sin días de aviso, solo el del día; ids estables y distintos', () => {
+    igual(planAvisos([item({ diasAviso: 0 })], AHORA).length, 1);
+    const p = planAvisos([item()], AHORA);
+    igual([p[0].id === idAviso('luz_2026-11-25|antes'), p[0].id !== p[1].id, p[0].id > 0], [true, true, true]);
   });
 });

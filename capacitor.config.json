@@ -1,5 +1,11 @@
 {
   "appId": "app.misgastos",
   "appName": "Mis Gastos",
-  "webDir": "www"
+  "webDir": "www",
+  "plugins": {
+    "LocalNotifications": {
+      "smallIcon": "ic_stat_aviso",
+      "iconColor": "#0F766E"
+    }
+  }
 }

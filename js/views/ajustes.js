@@ -4,6 +4,7 @@ import { $, esc, uid, money, hoy, toast, descargar, round2 } from '../util.js';
 import { vacio } from '../componentes.js';
 import { VERSION_ACTUAL, buscarVersion, aplicarActualizacion } from '../update.js';
 import { esApp, plugin } from '../plataforma.js';
+import { pedirPermisoAvisos } from '../avisos.js';
 import { migrarPaleta, migrarDatos } from '../seed.js';
 
 const TIPOS = { efectivo: 'Efectivo', debito: 'Débito', credito: 'Crédito (permite cuotas)', transferencia: 'Transferencia', billetera: 'Billetera virtual', otro: 'Otro' };
@@ -81,7 +82,11 @@ export function render(host, params) {
       <p class="nota">Recordatorios de vencimientos con monto variable (luz, internet, patente). Tenés ${S.serviciosPago.filter((s) => s.activo !== false).length} activos.</p>
       <a class="btn" href="#/pagos">Ver y editar servicios a pagar</a>
       ${esApp ? `<button class="btn" data-a="fijar-widget">Agregar el widget a la pantalla de inicio</button>
-      <p class="nota">Muestra los próximos vencimientos. Tocá el cuadrado de uno para registrar el pago.</p>` : ''}
+      <p class="nota">Muestra los próximos vencimientos. Tocá el cuadrado de uno para registrar el pago.</p>
+      <label class="switch"><input type="checkbox" id="av-activos" ${S.avisosPago ? 'checked' : ''}>
+        <span><b>Avisarme de los vencimientos</b><small>Una notificación los días de aviso de cada servicio antes del vencimiento, y otra el mismo día. Llegan aunque la app esté cerrada, cerca de la hora elegida (Android puede demorarlas hasta una hora para ahorrar batería). Tocala para registrar el pago.</small></span></label>
+      <label class="campo" ${S.avisosPago ? '' : 'hidden'}>Hora aproximada del aviso
+        <select id="av-hora">${[7, 8, 9, 10, 12, 14, 18, 20, 21].map((h) => `<option value="${h}" ${h === S.avisosHora ? 'selected' : ''}>${h}:00</option>`).join('')}</select></label>` : ''}
       <p class="nota">Dónde los pagás. Solo el nombre: la app nunca guarda usuarios, claves ni números de tarjeta. Quitar uno no cambia los servicios que ya lo usan.</p>
       ${S.appsPago.map((t, i) => `<div class="fila"><span>${esc(t)}</span>
         <button class="icono-btn" data-app-borrar="${i}" aria-label="Quitar ${esc(t)}">✕</button></div>`).join('')}
@@ -123,6 +128,18 @@ export function render(host, params) {
   // Cambios en campos: se guardan al salir del campo
   el.addEventListener('change', async (e) => {
     const t = e.target, d = t.dataset;
+    if (t.id === 'av-activos') {
+      if (t.checked && !(await pedirPermisoAvisos())) {
+        t.checked = false;
+        return toast('Para recibir avisos, permití las notificaciones de Mis Gastos en los ajustes de Android');
+      }
+      await db.setConfig('avisosPago', t.checked);
+      return ok(t.checked ? `Listo: te aviso de los vencimientos cerca de las ${S.avisosHora}:00` : 'Avisos desactivados');
+    }
+    if (t.id === 'av-hora') {
+      await db.setConfig('avisosHora', Number(t.value));
+      return ok(`Los avisos llegan cerca de las ${t.value}:00`, false);
+    }
     if (d.presup) {
       const v = num(t.value);
       v > 0 ? await db.put('presupuestos', { rubroId: d.presup, monto: v }) : await db.del('presupuestos', d.presup);

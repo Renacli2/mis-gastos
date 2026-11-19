@@ -34,6 +34,8 @@ export async function cargar() {
   S.appsPago = await db.getConfig('appsPago', []);
   S.cot = await db.getConfig('cotizacion', 0);
   S.cotFecha = await db.getConfig('cotizacionFecha', '');
+  S.avisosPago = await db.getConfig('avisosPago', false);   // notificaciones de vencimientos (app Android)
+  S.avisosHora = await db.getConfig('avisosHora', 9);
   for (const fn of oyentes) {
     try { fn(); } catch (err) { console.warn(err); }
   }
