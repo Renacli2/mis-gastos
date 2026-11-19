@@ -3,7 +3,7 @@ import { S, cargar, catsDe, rubro, cat, medio, aARS, vehiculo } from '../store.j
 import { $, esc, uid, money, hoy, toast, descargar, round2 } from '../util.js';
 import { vacio } from '../componentes.js';
 import { VERSION_ACTUAL, buscarVersion, aplicarActualizacion } from '../update.js';
-import { esApp } from '../plataforma.js';
+import { esApp, plugin } from '../plataforma.js';
 import { migrarPaleta, migrarDatos } from '../seed.js';
 
 const TIPOS = { efectivo: 'Efectivo', debito: 'Débito', credito: 'Crédito (permite cuotas)', transferencia: 'Transferencia', billetera: 'Billetera virtual', otro: 'Otro' };
@@ -80,6 +80,8 @@ export function render(host, params) {
     ${sec('pagos', 'Servicios a pagar', `
       <p class="nota">Recordatorios de vencimientos con monto variable (luz, internet, patente). Tenés ${S.serviciosPago.filter((s) => s.activo !== false).length} activos.</p>
       <a class="btn" href="#/pagos">Ver y editar servicios a pagar</a>
+      ${esApp ? `<button class="btn" data-a="fijar-widget">Agregar el widget a la pantalla de inicio</button>
+      <p class="nota">Muestra los próximos vencimientos. Tocá el cuadrado de uno para registrar el pago.</p>` : ''}
       <p class="nota">Dónde los pagás. Solo el nombre: la app nunca guarda usuarios, claves ni números de tarjeta. Quitar uno no cambia los servicios que ya lo usan.</p>
       ${S.appsPago.map((t, i) => `<div class="fila"><span>${esc(t)}</span>
         <button class="icono-btn" data-app-borrar="${i}" aria-label="Quitar ${esc(t)}">✕</button></div>`).join('')}
@@ -168,6 +170,13 @@ export function render(host, params) {
       } catch {
         est.innerHTML = '<small>No se pudo consultar. Revisá tu conexión e intentá de nuevo.</small>';
       }
+      return;
+    }
+    if (d.a === 'fijar-widget') {
+      try {
+        const r = await plugin('WidgetDatos').fijarWidget();
+        if (!r.pedido) toast('Mantené apretada la pantalla de inicio → Widgets → Mis Gastos');
+      } catch { toast('No se pudo agregar el widget'); }
       return;
     }
     if (d.a === 'aplicar-upd') return aplicarActualizacion();

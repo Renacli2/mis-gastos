@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Cuadrado para tildar, con la misma forma que en la app (una esquina menos redondeada). -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <stroke android:width="2dp" android:color="@color/w_tilde" />
+    <corners android:topLeftRadius="10dp" android:topRightRadius="10dp"
+        android:bottomRightRadius="3dp" android:bottomLeftRadius="10dp" />
+</shape>

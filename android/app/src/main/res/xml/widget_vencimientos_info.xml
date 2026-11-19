@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Widget de 4x2 celdas, redimensionable. updatePeriodMillis = 30 minutos (el mínimo que permite Android):
+  el widget recalcula "vence hoy / mañana" con la fecha del día. Además se redibuja a medianoche,
+  cada vez que la app cambia los datos y al cambiar la hora del teléfono (ver VencimientosWidget.java).
+-->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:description="@string/widget_descripcion"
+    android:initialLayout="@layout/widget_vencimientos"
+    android:previewLayout="@layout/widget_vencimientos"
+    android:minWidth="250dp"
+    android:minHeight="110dp"
+    android:minResizeWidth="180dp"
+    android:minResizeHeight="70dp"
+    android:targetCellWidth="4"
+    android:targetCellHeight="2"
+    android:resizeMode="horizontal|vertical"
+    android:updatePeriodMillis="1800000"
+    android:widgetCategory="home_screen" />

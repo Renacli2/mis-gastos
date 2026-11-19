@@ -1,7 +1,9 @@
 package app.misgastos;
 
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
+import android.net.Uri;
 
 import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
@@ -99,8 +101,62 @@ public class WidgetDatosPlugin extends Plugin {
         }
     }
 
-    /** Pide a los widgets que se redibujen con los datos nuevos. El widget llega en la etapa 3. */
+    /** Pide a los widgets que se redibujen con los datos nuevos. */
     static void avisarWidgets(Context context) {
-        // Todavía no hay widget: no hay nada que avisar.
+        VencimientosWidget.actualizarTodos(context);
+    }
+
+    /**
+     * Ofrece poner el widget en la pantalla de inicio (Android muestra su propio cartel para confirmar).
+     * Devuelve { pedido: false } si el lanzador del teléfono no lo permite: ahí hay que agregarlo a mano.
+     */
+    @PluginMethod
+    public void fijarWidget(PluginCall call) {
+        android.appwidget.AppWidgetManager mgr = android.appwidget.AppWidgetManager.getInstance(getContext());
+        boolean pedido = false;
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O && mgr.isRequestPinAppWidgetSupported()) {
+            pedido = mgr.requestPinAppWidget(new android.content.ComponentName(getContext(), VencimientosWidget.class), null, null);
+        }
+        JSObject r = new JSObject();
+        r.put("pedido", pedido);
+        r.put("cantidad", mgr.getAppWidgetIds(new android.content.ComponentName(getContext(), VencimientosWidget.class)).length);
+        call.resolve(r);
+    }
+
+    // ---------- Aperturas desde el widget (misgastos://pagar/ID, misgastos://servicio/ID, …) ----------
+
+    private static String apertura = null;
+
+    /** La app se abrió de cero tocando el widget. */
+    @Override
+    public void load() {
+        if (getActivity() != null) leerApertura(getActivity().getIntent());
+    }
+
+    /** La app ya estaba abierta (en segundo plano) y se tocó el widget. */
+    @Override
+    protected void handleOnNewIntent(Intent intent) {
+        super.handleOnNewIntent(intent);
+        leerApertura(intent);
+    }
+
+    private static synchronized void leerApertura(Intent intent) {
+        Uri data = intent != null ? intent.getData() : null;
+        if (data == null || !"misgastos".equals(data.getScheme())) return;
+        apertura = data.toString();
+        intent.setData(null); // para no repetirla si Android recrea la pantalla
+    }
+
+    /** Devuelve adónde pidió ir el widget (o null) y lo olvida. La app web lo llama al abrirse y al volver. */
+    @PluginMethod
+    public void tomarApertura(PluginCall call) {
+        String url;
+        synchronized (WidgetDatosPlugin.class) {
+            url = apertura;
+            apertura = null;
+        }
+        JSObject r = new JSObject();
+        r.put("url", url);
+        call.resolve(r);
     }
 }

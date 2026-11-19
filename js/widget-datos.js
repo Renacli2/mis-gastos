@@ -28,6 +28,35 @@ export function publicarWidget() {
 }
 
 /**
+ * Adónde pidió ir el widget al tocarlo, ya traducido a una acción de la app:
+ *   { ruta: '#/…', pagar: idVencimiento | null }, o null si la app no se abrió desde el widget.
+ */
+export async function aperturaWidget() {
+  if (!esApp) return null;
+  let url = null;
+  try {
+    ({ url = null } = await plugin('WidgetDatos').tomarApertura());
+  } catch (err) {
+    console.warn('No se pudo leer la apertura del widget', err);
+  }
+  return url ? destinoWidget(url) : null;
+}
+
+/** Traduce misgastos://pagar/ID, misgastos://servicio/ID, etc. a una ruta de la app. */
+export function destinoWidget(url) {
+  const m = /^misgastos:\/\/([a-z-]+)\/?(.*)$/.exec(url || '');
+  if (!m) return null;
+  const id = decodeURIComponent(m[2] || '');
+  switch (m[1]) {
+    case 'pagar': return id ? { ruta: '#/', pagar: id } : { ruta: '#/', pagar: null };
+    case 'servicio': return { ruta: id ? `#/pagos/${encodeURIComponent(id)}` : '#/pagos', pagar: null };
+    case 'nuevo-servicio': return { ruta: '#/pagos/nuevo', pagar: null };
+    case 'pagos': return { ruta: '#/pagos', pagar: null };
+    default: return { ruta: '#/', pagar: null };
+  }
+}
+
+/**
  * Aplica lo que se pidió desde el widget mientras la app estaba cerrada (por ahora, ocultar vencimientos).
  * Devuelve true si cambió algo. Las acciones sobre vencimientos que ya no existen o ya se pagaron se ignoran.
  */

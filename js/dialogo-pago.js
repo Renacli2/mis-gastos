@@ -75,7 +75,21 @@ export function abrirPago(vencimientoId) {
   return new Promise((resolve) => {
     let resultado = null;
     const cerrar = () => dlg.close();
-    dlg.addEventListener('close', () => { dlg.remove(); resolve(resultado); });
+    // El botón "atrás" (el de Android o el del navegador) cierra el diálogo sin guardar, en vez de cambiar
+    // de pantalla o salir de la app: al abrirlo se agrega un paso al historial, y "atrás" lo consume.
+    let porAtras = false;
+    const alVolver = () => { porAtras = true; cerrar(); };
+    history.pushState({ dialogoPago: true }, '');
+    window.addEventListener('popstate', alVolver);
+    window.addEventListener('hashchange', alVolver);
+    dlg.addEventListener('close', () => {
+      window.removeEventListener('popstate', alVolver);
+      window.removeEventListener('hashchange', alVolver);
+      // Si se cerró con los botones, se quita el paso que agregamos (misma dirección: no cambia de pantalla).
+      if (!porAtras && history.state?.dialogoPago) history.back();
+      dlg.remove();
+      resolve(resultado);
+    });
     // Tocar afuera del panel cierra sin guardar.
     dlg.addEventListener('click', (e) => { if (e.target === dlg) cerrar(); });
     $d('#dp-cancelar').addEventListener('click', cerrar);

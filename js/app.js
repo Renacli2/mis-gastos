@@ -4,8 +4,9 @@ import { sincronizarVencimientos } from './pagos-datos.js';
 import { $, $$, sumarMeses, toast } from './util.js';
 import { destruirCharts } from './charts.js';
 import { iniciarActualizaciones } from './update.js';
-import { esApp } from './plataforma.js';
-import { publicarWidget, aplicarAccionesWidget } from './widget-datos.js';
+import { esApp, plugin } from './plataforma.js';
+import { publicarWidget, aplicarAccionesWidget, aperturaWidget } from './widget-datos.js';
+import { abrirPago } from './dialogo-pago.js';
 import * as inicio from './views/inicio.js';
 import * as gastos from './views/gastos.js';
 import * as form from './views/form.js';
@@ -48,12 +49,41 @@ document.addEventListener('click', (e) => {
 // Navegar a una dirección externa hace que Capacitor la abra afuera: en el navegador o, si existe, en la app
 // de ese sitio (por ejemplo Mercado Pago). La app queda abierta detrás.
 if (esApp) {
+  // Botón "atrás" de Android: si hay un diálogo abierto (por ejemplo el de pago), lo cierra sin guardar;
+  // si no, vuelve a la pantalla anterior. Si no hay adónde volver, la app pasa a segundo plano.
+  // El diálogo se cierra a mano porque, si lo abrió el widget, Android no cuenta ese paso del historial.
+  plugin('App')?.addListener('backButton', ({ canGoBack }) => {
+    const dialogo = document.querySelector('dialog[open]');
+    if (dialogo) dialogo.close();
+    else if (canGoBack) history.back();
+    else plugin('App').minimizeApp();
+  });
   document.addEventListener('click', (e) => {
     const a = e.target.closest('a[target="_blank"]');
     if (!a || !/^https?:/i.test(a.href) || new URL(a.href).origin === location.origin) return;
     e.preventDefault();
     location.href = a.href;
   });
+}
+
+/**
+ * Si la app se abrió tocando el widget, va a la pantalla pedida. Tocar el cuadrado de un vencimiento
+ * abre el mismo diálogo de pago que la tarjeta del inicio (el monto cambia cada mes: hay que escribirlo).
+ */
+async function abrirDesdeWidget() {
+  const d = await aperturaWidget();
+  if (!d) return;
+  if ((location.hash || '#/') !== d.ruta) {
+    history.pushState(null, '', d.ruta);   // sin disparar hashchange: el redibujo lo hacemos acá y esperamos que termine
+    await ruta();
+  }
+  if (!d.pagar) return;
+  const boton = document.querySelector(`.pv [data-pagar="${CSS.escape(d.pagar)}"]`);
+  if (boton) return boton.click();   // misma acción que tocarlo en la tarjeta (con "Deshacer" incluido)
+  const v = S.vencimientosPago.find((x) => x.id === d.pagar);
+  if (!v) return toast('Ese vencimiento ya no existe');
+  if (v.estado === 'pagado') return toast('Ese vencimiento ya figura como pagado');
+  if (await abrirPago(d.pagar)) { toast('Pago registrado y gasto cargado'); await ruta(); }
 }
 
 async function init() {
@@ -67,6 +97,7 @@ async function init() {
   publicarWidget();
   window.addEventListener('hashchange', ruta);
   await ruta();
+  await abrirDesdeWidget();
   iniciarActualizaciones();
   // Al volver a la app (por ejemplo, otro día) se aplica lo pedido desde el widget y se crean los vencimientos que falten.
   document.addEventListener('visibilitychange', async () => {
@@ -75,7 +106,8 @@ async function init() {
     const nuevos = await sincronizarVencimientos();
     publicarWidget();   // también cambia la fecha de la copia si pasó el día
     // Solo se redibuja el inicio: en otra pantalla podría haber un formulario a medio completar.
-    if ((delWidget || nuevos) && ['', '#', '#/'].includes(location.hash)) ruta();
+    if ((delWidget || nuevos) && ['', '#', '#/'].includes(location.hash)) await ruta();
+    await abrirDesdeWidget();
   });
 }
 

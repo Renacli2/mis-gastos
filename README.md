@@ -101,4 +101,12 @@ npm run apk
 - Lo que se pida desde el widget (por ejemplo, ocultar un vencimiento) queda en una cola en el mismo lugar. La app la aplica y la vacía al abrirse o al volver a ella; las acciones sobre vencimientos que ya no existen se ignoran.
 - En el navegador y en la PWA nada de esto hace nada.
 
+**Widget "Próximos vencimientos"** (`VencimientosWidget.java`, diseño en `res/layout/widget_vencimientos.xml`):
+- 4x2 celdas, redimensionable; muestra hasta 3 vencimientos urgentes (vencidos, de hoy y dentro de los días de aviso), con colores de urgencia, la fecha, la app y el medio de pago. Si hay más, "y N más". Modo claro y oscuro.
+- Se agrega desde **Ajustes → Servicios a pagar → Agregar el widget a la pantalla de inicio**, o a mano (mantener apretada la pantalla de inicio → Widgets → Mis Gastos).
+- Tocar el **cuadrado** abre la app en el diálogo de pago de ese vencimiento: dentro de un widget no se puede escribir, y el monto cambia cada mes. Tocar el **nombre** abre la ficha del servicio; el título, la lista de servicios. Lo hace con direcciones `misgastos://…` que el plugin `WidgetDatos` guarda y la app lee con `tomarApertura()` (`aperturaWidget()` en `js/widget-datos.js`).
+- Se redibuja: cuando la app cambia los datos, poco después de medianoche (alarma inexacta, sin despertar al teléfono), cada 30 minutos (el mínimo de Android) y al cambiar la hora o la zona horaria. Calcula la urgencia con la fecha del día, igual que `urgencia()` de `js/pagos.js`.
+- Sin datos todavía, pide abrir la app; sin servicios, invita a cargarlos; si la copia tiene más de 7 días, avisa "Abrí la app para actualizar".
+- El botón "atrás" de Android usa `@capacitor/app`: cierra el diálogo abierto, vuelve a la pantalla anterior o, en el inicio, pasa la app a segundo plano.
+
 **Actualizar**: cada versión nueva es un APK nuevo, que se instala encima del anterior sin borrar los datos. Tiene que estar firmado con la misma clave que el anterior.

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Colores del widget en modo oscuro (los mismos de la app). -->
+<resources>
+    <color name="w_fondo">#162420</color>
+    <color name="w_tinta">#E7EFEC</color>
+    <color name="w_tinta2">#8FA39E</color>
+    <color name="w_enlace">#5FD1C4</color>
+    <color name="w_coral">#FF7A59</color>
+    <color name="w_tilde">#8C8FA39E</color>
+    <color name="w_rojo_bg">#3B322A</color>
+    <color name="w_ambar_bg">#585018</color>
+</resources>

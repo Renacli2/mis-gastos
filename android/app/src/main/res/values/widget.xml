@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Widget "Próximos vencimientos": textos y colores (los mismos de la app, modo claro). -->
+<resources>
+    <string name="widget_nombre">Próximos vencimientos</string>
+    <string name="widget_descripcion">Tus próximos vencimientos de pago. Tocá el cuadrado para registrar el pago.</string>
+    <string name="widget_ver_todos">Ver todos</string>
+
+    <color name="w_fondo">#F8FAF7</color>
+    <color name="w_tinta">#10201E</color>
+    <color name="w_tinta2">#5F716D</color>
+    <color name="w_enlace">#0F4C47</color>
+    <color name="w_coral">#E4572E</color>
+    <color name="w_tilde">#8C5F716D</color>
+    <color name="w_rojo_bg">#F5DFD6</color>
+    <color name="w_ambar_bg">#F6E6AE</color>
+</resources>
