@@ -11,6 +11,11 @@ export const S = {
 
 const porOrden = (a, b) => (a.orden ?? 0) - (b.orden ?? 0) || a.nombre.localeCompare(b.nombre);
 
+// Funciones que se llaman cada vez que se recarga el estado. Todas las escrituras de la app terminan
+// en cargar(), así que acá alcanza con un solo enganche (por ejemplo, para mantener al día el widget).
+const oyentes = [];
+export const alCargar = (fn) => { oyentes.push(fn); };
+
 export async function cargar() {
   const [r, c, m, p, rec, g] = await Promise.all(
     ['rubros', 'categorias', 'medios', 'presupuestos', 'recurrentes', 'gastos'].map((s) => db.all(s))
@@ -29,6 +34,9 @@ export async function cargar() {
   S.appsPago = await db.getConfig('appsPago', []);
   S.cot = await db.getConfig('cotizacion', 0);
   S.cotFecha = await db.getConfig('cotizacionFecha', '');
+  for (const fn of oyentes) {
+    try { fn(); } catch (err) { console.warn(err); }
+  }
 }
 
 const SIN = { nombre: '(sin asignar)', color: '#999999', icono: '❔' };

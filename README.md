@@ -95,4 +95,10 @@ npm run apk
 
 **Datos**: la app Android tiene su propia base, separada de la de Chrome. Para pasar los gastos: en la PWA, Ajustes → Backup → Descargar backup; en la app, Ajustes → Backup → Restaurar backup. Desinstalar la app borra sus datos: antes, guardá un backup.
 
+**Datos para el widget**: el widget es nativo y no puede leer la base de la app web (IndexedDB). Por eso:
+- Cada vez que cambian los datos (todo termina en `cargar()`, que avisa con `alCargar`), `js/widget-datos.js` arma con `datosWidget()` de `js/pagos.js` una copia chica de los próximos vencimientos y la guarda con el plugin nativo `WidgetDatos` (`android/app/src/main/java/app/misgastos/WidgetDatosPlugin.java`) en SharedPreferences privadas (`mis_gastos_widget`). Solo reescribe si algo cambió.
+- La copia (versión 1) tiene hasta 12 pendientes, del más urgente al menos: id, servicio, nombre, fecha, días de aviso, app, medio y enlace. **No lleva montos, gastos, claves ni datos de tarjetas.** No guarda el estado de urgencia: el widget lo calcula con la fecha, así acierta aunque cambie el día sin abrir la app. `generado` permite avisar si la copia es vieja.
+- Lo que se pida desde el widget (por ejemplo, ocultar un vencimiento) queda en una cola en el mismo lugar. La app la aplica y la vacía al abrirse o al volver a ella; las acciones sobre vencimientos que ya no existen se ignoran.
+- En el navegador y en la PWA nada de esto hace nada.
+
 **Actualizar**: cada versión nueva es un APK nuevo, que se instala encima del anterior sin borrar los datos. Tiene que estar firmado con la misma clave que el anterior.

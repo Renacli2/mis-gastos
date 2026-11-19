@@ -2,7 +2,7 @@ import { suite, test, igual } from './lib.js';
 import {
   fechaVencimiento, siguienteVencimiento, vencimientosFaltantes, generarVencimientos, pendientesDe, reconciliar,
   urgencia, textoUrgencia, proximosVencimientos, paraTarjeta, historialPagos, montoReferencia,
-  enlaceSeguro, validarServicioPago, validarPago, gastoDePago, idVencimiento,
+  enlaceSeguro, validarServicioPago, validarPago, gastoDePago, idVencimiento, datosWidget,
 } from '../js/pagos.js';
 
 const serv = (extra) => ({ id: 's', nombre: 'Luz', categoriaId: 'cLuz', frecuencia: 'mensual', primerVenc: '2026-11-10', diasAviso: 5, activo: true, ...extra });
@@ -144,7 +144,7 @@ suite('Pagos · lista para la tarjeta', () => {
     igual(lista.map((x) => [x.nombre, x.estado]), [['Patente', 'vencido'], ['Internet', 'proximo'], ['Luz', 'mas-adelante']]);
   });
   test('cada ítem trae lo necesario para mostrarlo, sin HTML', () => {
-    igual(lista[2], { id: 'a', servicioId: 'luz', nombre: 'Luz', fecha: '2026-12-10', estado: 'mas-adelante', dias: 22, texto: 'Vence el 10/12', appPago: 'Homebanking', medio: 'Débito', enlace: 'https://banco.com.ar/' });
+    igual(lista[2], { id: 'a', servicioId: 'luz', nombre: 'Luz', fecha: '2026-12-10', diasAviso: 5, estado: 'mas-adelante', dias: 22, texto: 'Vence el 10/12', appPago: 'Homebanking', medio: 'Débito', enlace: 'https://banco.com.ar/' });
   });
   test('la tarjeta muestra los urgentes, con tope', () => {
     const t = paraTarjeta(lista, 1);
@@ -154,6 +154,41 @@ suite('Pagos · lista para la tarjeta', () => {
     const t = paraTarjeta(lista.filter((x) => x.estado === 'mas-adelante'));
     igual([t.items, t.siguiente.id], [[], 'a']);
     igual(paraTarjeta([]), { items: [], resto: 0, siguiente: null, total: 0 });
+  });
+});
+
+suite('Pagos · datos para el widget', () => {
+  const HOY = '2026-11-18';
+  const servicios = [
+    serv({ id: 'luz', nombre: 'Luz', appPago: 'Homebanking', medioId: 'deb', enlace: 'https://banco.com.ar', montoRef: 33000 }),
+    serv({ id: 'net', nombre: 'Internet', diasAviso: 10 }),
+    serv({ id: 'pat', nombre: 'Patente' }),
+    serv({ id: 'viejo', nombre: 'Gimnasio', activo: false }),
+  ];
+  const vencs = [
+    { id: 'a', servicioId: 'luz', fecha: '2026-12-10', estado: 'pendiente' },
+    { id: 'b', servicioId: 'net', fecha: '2026-11-25', estado: 'pendiente' },
+    { id: 'c', servicioId: 'pat', fecha: '2026-11-15', estado: 'pendiente' },
+    { id: 'd', servicioId: 'luz', fecha: '2026-11-10', estado: 'pagado', gastoId: 'g1' },
+    { id: 'e', servicioId: 'pat', fecha: '2026-11-18', estado: 'oculto' },
+    { id: 'f', servicioId: 'viejo', fecha: '2026-11-01', estado: 'pendiente' },
+  ];
+  const lista = proximosVencimientos(servicios, vencs, HOY, { medio: (id) => ({ deb: 'Débito' }[id]) });
+  const d = datosWidget(lista, HOY, true);
+  test('mismo orden que la tarjeta, sin pagados, ocultos ni servicios dados de baja', () => {
+    igual(d.items.map((x) => x.id), ['c', 'b', 'a']);
+    igual([d.v, d.generado, d.hayServicios, d.total], [1, HOY, true, 3]);
+  });
+  test('cada ítem lleva solo lo que muestra el widget: sin montos ni estado precalculado', () => {
+    igual(d.items[2], { id: 'a', servicioId: 'luz', nombre: 'Luz', fecha: '2026-12-10', diasAviso: 5, appPago: 'Homebanking', medio: 'Débito', enlace: 'https://banco.com.ar/' });
+    igual(/monto|gasto|estado|texto/.test(JSON.stringify(d)), false);
+  });
+  test('respeta el tope pero informa el total', () => {
+    const t = datosWidget(lista, HOY, true, 2);
+    igual([t.items.length, t.total], [2, 3]);
+  });
+  test('sin servicios o sin pendientes, lista vacía', () => {
+    igual(datosWidget([], HOY, false), { v: 1, generado: HOY, hayServicios: false, total: 0, items: [] });
   });
 });
 

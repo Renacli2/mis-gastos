@@ -122,9 +122,10 @@ export function proximosVencimientos(servicios, vencimientos, hoy, nombres = {})
     .filter((v) => v.estado === 'pendiente' && porId.get(v.servicioId) && porId.get(v.servicioId).activo !== false)
     .map((v) => {
       const s = porId.get(v.servicioId);
-      const u = urgencia(v.fecha, hoy, s.diasAviso ?? DIAS_AVISO);
+      const diasAviso = s.diasAviso ?? DIAS_AVISO;
+      const u = urgencia(v.fecha, hoy, diasAviso);
       return {
-        id: v.id, servicioId: s.id, nombre: s.nombre, fecha: v.fecha,
+        id: v.id, servicioId: s.id, nombre: s.nombre, fecha: v.fecha, diasAviso,
         estado: u.estado, dias: u.dias, texto: textoUrgencia(u, v.fecha),
         appPago: s.appPago || '', medio: nombres.medio ? nombres.medio(s.medioId) || '' : '', enlace: enlaceSeguro(s.enlace),
       };
@@ -143,6 +144,24 @@ export function paraTarjeta(lista, max = 5) {
     resto: Math.max(0, urgentes.length - max),
     siguiente: urgentes.length ? null : lista[0] || null,
     total: lista.length,
+  };
+}
+
+/**
+ * Copia chica para el widget de Android (versión 1 del contrato). Sale de proximosVencimientos() y lleva
+ * solo lo que el widget muestra, elegido campo por campo: nada de montos, gastos ni datos de pago.
+ * No guarda el estado de urgencia: el widget lo calcula con fecha y diasAviso, así acierta aunque cambie el día.
+ */
+export function datosWidget(lista, fecha, hayServicios, max = 12) {
+  return {
+    v: 1,
+    generado: fecha,
+    hayServicios: !!hayServicios,
+    total: lista.length,
+    items: lista.slice(0, max).map((x) => ({
+      id: x.id, servicioId: x.servicioId, nombre: x.nombre, fecha: x.fecha, diasAviso: x.diasAviso,
+      appPago: x.appPago || '', medio: x.medio || '', enlace: x.enlace || '',
+    })),
   };
 }
 

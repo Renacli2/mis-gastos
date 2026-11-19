@@ -1,10 +1,11 @@
-import { S, cargar } from './store.js';
+import { S, cargar, alCargar } from './store.js';
 import { seedSiHaceFalta, migrarPaleta, migrarDatos } from './seed.js';
 import { sincronizarVencimientos } from './pagos-datos.js';
 import { $, $$, sumarMeses, toast } from './util.js';
 import { destruirCharts } from './charts.js';
 import { iniciarActualizaciones } from './update.js';
 import { esApp } from './plataforma.js';
+import { publicarWidget, aplicarAccionesWidget } from './widget-datos.js';
 import * as inicio from './views/inicio.js';
 import * as gastos from './views/gastos.js';
 import * as form from './views/form.js';
@@ -32,6 +33,8 @@ async function ruta() {
   window.scrollTo(0, 0);
 }
 S.rerender = ruta;
+// Cada cambio en los datos deja al día la copia que lee el widget de Android (en el navegador no hace nada).
+alCargar(publicarWidget);
 
 // Selector de mes compartido por todas las vistas
 document.addEventListener('click', (e) => {
@@ -59,14 +62,20 @@ async function init() {
   await migrarPaleta();
   await migrarDatos();
   await cargar();
+  await aplicarAccionesWidget();
   await sincronizarVencimientos();
+  publicarWidget();
   window.addEventListener('hashchange', ruta);
   await ruta();
   iniciarActualizaciones();
-  // Al volver a la app (por ejemplo, otro día) se crean los vencimientos que falten.
+  // Al volver a la app (por ejemplo, otro día) se aplica lo pedido desde el widget y se crean los vencimientos que falten.
   document.addEventListener('visibilitychange', async () => {
+    if (document.visibilityState !== 'visible') return;
+    const delWidget = await aplicarAccionesWidget();
+    const nuevos = await sincronizarVencimientos();
+    publicarWidget();   // también cambia la fecha de la copia si pasó el día
     // Solo se redibuja el inicio: en otra pantalla podría haber un formulario a medio completar.
-    if (document.visibilityState === 'visible' && await sincronizarVencimientos() && ['', '#', '#/'].includes(location.hash)) ruta();
+    if ((delWidget || nuevos) && ['', '#', '#/'].includes(location.hash)) ruta();
   });
 }
 
