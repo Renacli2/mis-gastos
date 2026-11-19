@@ -1,4 +1,5 @@
 import { esc, toast } from './util.js';
+import { esApp } from './plataforma.js';
 
 export const VERSION_ACTUAL = self.APP_VERSION || '0.0.0';
 const INTERVALO = 30 * 60 * 1000; // chequeo automático como mucho cada 30 minutos
@@ -72,6 +73,8 @@ export function iniciarActualizaciones() {
     localStorage.setItem('mg-version', VERSION_ACTUAL);
   } catch { /* almacenamiento no disponible */ }
 
+  // En la app Android los archivos vienen dentro del APK: una versión nueva se instala con otro APK.
+  if (esApp) return;
   chequeoAutomatico();
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') chequeoAutomatico();

@@ -69,3 +69,30 @@ Los tests se corren en el navegador, con el servidor andando: http://localhost:8
 En el celular, la app busca versiones nuevas sola al abrirse y al volver a ella. Si encuentra una, muestra un cartel con el botón **Actualizar**. También se puede buscar a mano en **Ajustes → Actualizaciones**. Actualizar no borra los gastos.
 
 Los datos **no** viajan al servidor: hacé backups periódicos desde Ajustes → Backup.
+
+## App Android (Capacitor)
+La misma app web se empaqueta como app Android con [Capacitor](https://capacitorjs.com) 8, para poder sumarle un widget y avisos nativos. La versión web y la PWA siguen funcionando igual.
+
+**Cómo está armado**
+- `capacitor.config.json` y `package.json`: configuración de Capacitor y los comandos.
+- `scripts/copiar-web.mjs` copia la app web a `www/` (no va al repo). No se copian `sw.js` ni los tests: dentro del APK los archivos ya están en el teléfono.
+- `android/`: el proyecto Android que genera Capacitor (íconos y pantalla de carga incluidos).
+- `js/plataforma.js` dice si la app corre dentro de Android (`esApp`). Dentro de la app:
+  - no se registra el service worker ni se buscan actualizaciones en GitHub Pages;
+  - el backup y el CSV se entregan con el menú **Compartir** de Android (Drive, Archivos, mail…), porque el visor web no descarga archivos.
+- La carga por voz no está disponible dentro de la app: el visor web de Android no trae reconocimiento de voz, y la app esconde el botón del micrófono sola.
+
+**Herramientas**: Node 22 o más nuevo, JDK 21 y el SDK de Android con la plataforma 36. Android Studio 2025.2.1 o más nuevo solo hace falta para abrir el proyecto en el editor.
+
+**Compilar el APK de prueba**
+```
+npm install
+npm run apk
+```
+(con `JAVA_HOME` apuntando al JDK 21 y `ANDROID_HOME` al SDK). El APK queda en `android/app/build/outputs/apk/debug/app-debug.apk`.
+
+**Instalarlo en el celular**: con la depuración USB activada, `adb install -r app-debug.apk`; o copiar el APK al teléfono y abrirlo (pide permitir "instalar apps desconocidas").
+
+**Datos**: la app Android tiene su propia base, separada de la de Chrome. Para pasar los gastos: en la PWA, Ajustes → Backup → Descargar backup; en la app, Ajustes → Backup → Restaurar backup. Desinstalar la app borra sus datos: antes, guardá un backup.
+
+**Actualizar**: cada versión nueva es un APK nuevo, que se instala encima del anterior sin borrar los datos. Tiene que estar firmado con la misma clave que el anterior.

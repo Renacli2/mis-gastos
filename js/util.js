@@ -1,3 +1,5 @@
+import { esApp, plugin } from './plataforma.js';
+
 export const $ = (s, r = document) => r.querySelector(s);
 export const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 
@@ -62,7 +64,24 @@ export function toast(msg) {
   toastTimer = setTimeout(() => t.classList.remove('visible'), 2600);
 }
 
-export function descargar(nombre, contenido, tipo) {
+/**
+ * Entrega un archivo al usuario. En el navegador lo descarga y devuelve true.
+ * En la app Android no hay descargas: lo guarda en la caché de la app y abre "Compartir"
+ * para mandarlo a Drive, Archivos, mail, etc. Devuelve false (el menú de compartir ya es la respuesta).
+ */
+export async function descargar(nombre, contenido, tipo) {
+  if (esApp) {
+    const Filesystem = plugin('Filesystem');
+    const Share = plugin('Share');
+    try {
+      const { uri } = await Filesystem.writeFile({ path: nombre, data: contenido, directory: 'CACHE', encoding: 'utf8' });
+      await Share.share({ title: nombre, files: [uri], dialogTitle: 'Guardar o enviar el archivo' });
+    } catch (err) {
+      // Cerrar el menú de compartir sin elegir nada no es un error.
+      if (!/cancel/i.test(err?.message || '')) toast('No se pudo preparar el archivo');
+    }
+    return false;
+  }
   const blob = new Blob([contenido], { type: tipo });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
@@ -70,4 +89,5 @@ export function descargar(nombre, contenido, tipo) {
   document.body.appendChild(a);
   a.click();
   setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  return true;
 }

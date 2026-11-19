@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Mis Gastos</string>
+    <string name="title_activity_main">Mis Gastos</string>
+    <string name="package_name">app.misgastos</string>
+    <string name="custom_url_scheme">app.misgastos</string>
+</resources>

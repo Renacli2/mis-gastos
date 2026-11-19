@@ -3,6 +3,7 @@ import { S, cargar, catsDe, rubro, cat, medio, aARS, vehiculo } from '../store.j
 import { $, esc, uid, money, hoy, toast, descargar, round2 } from '../util.js';
 import { vacio } from '../componentes.js';
 import { VERSION_ACTUAL, buscarVersion, aplicarActualizacion } from '../update.js';
+import { esApp } from '../plataforma.js';
 import { migrarPaleta, migrarDatos } from '../seed.js';
 
 const TIPOS = { efectivo: 'Efectivo', debito: 'Débito', credito: 'Crédito (permite cuotas)', transferencia: 'Transferencia', billetera: 'Billetera virtual', otro: 'Otro' };
@@ -94,13 +95,15 @@ export function render(host, params) {
 
     ${sec('datos', 'Backup y exportación', `
       <p class="nota">Tus datos se guardan solo en este celular. Hacé un backup de vez en cuando y guardalo en Drive o similar.</p>
-      <button class="btn" data-a="exp-json">Descargar backup (JSON)</button>
+      <button class="btn" data-a="exp-json">${esApp ? 'Guardar backup (JSON)…' : 'Descargar backup (JSON)'}</button>
       <button class="btn" data-a="exp-csv">Exportar gastos a Excel (CSV)</button>
       <label class="btn">Restaurar backup… <input type="file" id="imp" accept=".json,application/json" hidden></label>
       <button class="btn peligro" data-a="borrar-todo">Borrar todos los datos</button>
       <small>${S.gastos.length} gastos registrados</small>`)}
 
-    ${sec('app', 'Actualizaciones', `
+    ${sec('app', 'Actualizaciones', esApp ? `
+      <div class="version"><span>Versión instalada</span><b>${VERSION_ACTUAL} · app Android</b></div>
+      <p class="nota">Esta es la app instalada desde un APK: las versiones nuevas se instalan con un APK nuevo, encima de esta. Tus gastos no se borran al actualizar, pero sí si desinstalás la app: antes, guardá un backup.</p>` : `
       <div class="version"><span>Versión instalada</span><b>${VERSION_ACTUAL}</b></div>
       <p class="nota">La app busca versiones nuevas sola cada vez que la abrís. Actualizar no borra tus gastos.</p>
       <button class="btn" data-a="buscar-upd">Buscar actualizaciones</button>
@@ -251,8 +254,8 @@ export function render(host, params) {
     }
     if (d.a === 'exp-json') {
       const data = await db.exportAll();
-      descargar(`mis-gastos-backup-${hoy()}.json`, JSON.stringify(data), 'application/json');
-      return toast('Backup descargado');
+      if (await descargar(`mis-gastos-backup-${hoy()}.json`, JSON.stringify(data), 'application/json')) toast('Backup descargado');
+      return;
     }
     if (d.a === 'exp-csv') {
       const q = (s) => `"${String(s ?? '').replace(/"/g, '""')}"`;
@@ -264,8 +267,8 @@ export function render(host, params) {
         g.prescindible ? 'Sí' : 'No', g.cuotaTotal > 1 ? `${g.cuotaNro}/${g.cuotaTotal}` : '', g.recurrenteId ? 'Sí' : 'No',
         q(vehiculo(g.vehiculoId)?.alias), g.litros > 0 ? n(g.litros) : '', g.odometro ?? '', g.litros > 0 ? (g.tanqueLleno ? 'Sí' : 'No') : '',
       ]));
-      descargar(`mis-gastos-${hoy()}.csv`, '﻿' + filas.map((f) => f.join(';')).join('\r\n'), 'text/csv;charset=utf-8');
-      return toast('CSV descargado');
+      if (await descargar(`mis-gastos-${hoy()}.csv`, '﻿' + filas.map((f) => f.join(';')).join('\r\n'), 'text/csv;charset=utf-8')) toast('CSV descargado');
+      return;
     }
     if (d.a === 'borrar-todo') {
       if (!confirm('Esto borra TODOS tus gastos, rubros y ajustes de este celular. ¿Descargaste un backup?')) return;

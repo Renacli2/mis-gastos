@@ -1,0 +1,20 @@
+{
+  "name": "mis-gastos",
+  "version": "1.5.0",
+  "private": true,
+  "description": "Mis Gastos: la app web (PWA) y su versión Android empaquetada con Capacitor.",
+  "scripts": {
+    "web": "node scripts/copiar-web.mjs",
+    "sync": "npm run web && cap sync android",
+    "apk": "npm run sync && cd android && .\\gradlew.bat assembleDebug"
+  },
+  "dependencies": {
+    "@capacitor/android": "8.6.2",
+    "@capacitor/core": "8.6.2",
+    "@capacitor/filesystem": "8.1.5",
+    "@capacitor/share": "8.0.3"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "8.6.2"
+  }
+}

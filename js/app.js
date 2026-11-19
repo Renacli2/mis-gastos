@@ -4,6 +4,7 @@ import { sincronizarVencimientos } from './pagos-datos.js';
 import { $, $$, sumarMeses, toast } from './util.js';
 import { destruirCharts } from './charts.js';
 import { iniciarActualizaciones } from './update.js';
+import { esApp } from './plataforma.js';
 import * as inicio from './views/inicio.js';
 import * as gastos from './views/gastos.js';
 import * as form from './views/form.js';
@@ -40,6 +41,18 @@ document.addEventListener('click', (e) => {
   ruta();
 });
 
+// En la app Android, el visor web ignora los enlaces que abren otra pestaña ("Ir a pagar ↗").
+// Navegar a una dirección externa hace que Capacitor la abra afuera: en el navegador o, si existe, en la app
+// de ese sitio (por ejemplo Mercado Pago). La app queda abierta detrás.
+if (esApp) {
+  document.addEventListener('click', (e) => {
+    const a = e.target.closest('a[target="_blank"]');
+    if (!a || !/^https?:/i.test(a.href) || new URL(a.href).origin === location.origin) return;
+    e.preventDefault();
+    location.href = a.href;
+  });
+}
+
 async function init() {
   if (navigator.storage?.persist) navigator.storage.persist().catch(() => {});
   await seedSiHaceFalta();
@@ -62,6 +75,7 @@ init().catch((err) => {
   toast('No se pudo abrir la base de datos');
 });
 
-if ('serviceWorker' in navigator) {
+// En la app Android los archivos ya vienen dentro del APK: no hace falta el service worker.
+if ('serviceWorker' in navigator && !esApp) {
   window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
 }

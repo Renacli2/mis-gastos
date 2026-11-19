@@ -1,9 +1,12 @@
 // Captura de voz con la Web Speech API del navegador. Sin backend, sin claves.
 // Nunca arranca sola: solo escucha cuando alguien llama a escuchar(), y eso pasa al tocar el micrófono.
 
+import { esApp } from './plataforma.js';
+
 const Reconocedor = () => window.SpeechRecognition || window.webkitSpeechRecognition || null;
 
-export const soportaVoz = () => !!Reconocedor();
+// El visor web de Android puede declarar el reconocedor aunque no funcione: dentro de la app se esconde siempre.
+export const soportaVoz = () => !esApp && !!Reconocedor();
 
 /**
  * Avisa el estado del permiso de micrófono sin pedirlo ('granted', 'denied' o 'prompt'), ahora y cada vez

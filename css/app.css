@@ -246,6 +246,8 @@ details.sec > summary::after {
 }
 details.sec[open] > summary::after { transform: rotate(45deg); }
 details.sec > :not(summary) { margin-left: 18px; margin-right: 18px; }
+/* Con márgenes laterales, el ancho 100% de .btn lo sacaba del borde de la tarjeta. */
+details.sec > .btn { width: auto; }
 details.sec[open] { padding-bottom: 16px; }
 .inline { display: flex; align-items: center; gap: 8px; margin: 8px 0; }
 .inline .txt { flex: 1; }
@@ -427,7 +429,9 @@ ul.cats { list-style: none; padding: 0 0 0 14px; margin: 4px 0; }
 .pv-tilde {
   flex: none; width: 44px; height: 44px; margin-top: -2px; border-radius: 14px 14px 4px 14px; cursor: pointer;
   display: grid; place-items: center; background: transparent; color: transparent;
-  border: 2px solid color-mix(in srgb, var(--tinta2) 55%, transparent); transition: background .15s, color .15s;
+  /* El color va aparte: visores web viejos de Android (Chrome 113) dejan el borde transparente
+     si color-mix() con var() va dentro del atajo "border". */
+  border: 2px solid var(--tinta2); border-color: color-mix(in srgb, var(--tinta2) 55%, transparent); transition: background .15s, color .15s;
 }
 .pv-tilde:hover, .pv-tilde:focus-visible { color: var(--verde); border-color: var(--verde); }
 .pv-tilde:active { background: color-mix(in srgb, var(--verde) 18%, transparent); }
