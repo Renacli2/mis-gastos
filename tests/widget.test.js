@@ -19,3 +19,15 @@ suite('Widget · adónde lleva cada toque', () => {
     igual(destinoWidget('misgastos://algo-raro'), { ruta: '#/', pagar: null });
   });
 });
+
+import { resumenBackup } from '../js/traspaso.js';
+
+suite('Traspaso · resumen del backup para confirmar', () => {
+  test('cuenta gastos, servicios y vehículos', () => {
+    const b = (g, s, v) => ({ data: { gastos: Array(g).fill({}), serviciosPago: Array(s).fill({}), vehiculos: Array(v).fill({}) } });
+    igual(resumenBackup(b(120, 9, 1)), '120 gastos, 9 servicios a pagar y 1 vehículo');
+    igual(resumenBackup(b(1, 1, 2)), '1 gasto, 1 servicio a pagar y 2 vehículos');
+    igual(resumenBackup(b(5, 0, 0)), '5 gastos');
+    igual(resumenBackup(b(5, 2, 0)), '5 gastos y 2 servicios a pagar');
+  });
+});

@@ -8,6 +8,7 @@ import { esApp, plugin } from './plataforma.js';
 import { publicarWidget, aplicarAccionesWidget, aperturaWidget } from './widget-datos.js';
 import { abrirPago } from './dialogo-pago.js';
 import { programarAvisos, alTocarAviso } from './avisos.js';
+import { importarCompartido } from './traspaso.js';
 import * as inicio from './views/inicio.js';
 import * as gastos from './views/gastos.js';
 import * as form from './views/form.js';
@@ -115,18 +116,27 @@ async function init() {
   programarAvisos();
   window.addEventListener('hashchange', ruta);
   await ruta();
+  // Backup compartido desde la app web (o abierto con "Abrir con Mis Gastos"): se pide confirmar con la app ya
+  // dibujada, y si se restaura se completan los vencimientos y se redibuja.
+  if (await importarCompartido()) {
+    await sincronizarVencimientos();
+    await ruta();
+    toast('Listo: tus datos ya están en la app');
+  }
   await abrirDesdeWidget();
   avisarListo();
   iniciarActualizaciones();
   // Al volver a la app (por ejemplo, otro día) se aplica lo pedido desde el widget y se crean los vencimientos que falten.
   document.addEventListener('visibilitychange', async () => {
     if (document.visibilityState !== 'visible') return;
+    const importado = await importarCompartido();
     const delWidget = await aplicarAccionesWidget();
     const nuevos = await sincronizarVencimientos();
     publicarWidget();   // también cambia la fecha de la copia si pasó el día
     programarAvisos();  // y deja de lado los avisos que ya pasaron
     // Solo se redibuja el inicio: en otra pantalla podría haber un formulario a medio completar.
-    if ((delWidget || nuevos) && ['', '#', '#/'].includes(location.hash)) await ruta();
+    if (importado) { history.replaceState(null, '', '#/'); await ruta(); toast('Listo: tus datos ya están en la app'); }
+    else if ((delWidget || nuevos) && ['', '#', '#/'].includes(location.hash)) await ruta();
     await abrirDesdeWidget();
   });
 }

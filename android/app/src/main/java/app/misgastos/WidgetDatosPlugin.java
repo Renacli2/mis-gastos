@@ -126,25 +126,80 @@ public class WidgetDatosPlugin extends Plugin {
     // ---------- Aperturas desde el widget (misgastos://pagar/ID, misgastos://servicio/ID, …) ----------
 
     private static String apertura = null;
+    private static String importacion = null;   // backup compartido con la app o abierto con ella
+    private static final int MAX_BACKUP = 30 * 1024 * 1024;
 
-    /** La app se abrió de cero tocando el widget. */
+    /** La app se abrió de cero (tocando el widget, o porque le compartieron un backup). */
     @Override
     public void load() {
         if (getActivity() != null) leerApertura(getActivity().getIntent());
     }
 
-    /** La app ya estaba abierta (en segundo plano) y se tocó el widget. */
+    /** La app ya estaba abierta (en segundo plano) y se tocó el widget o le compartieron un backup. */
     @Override
     protected void handleOnNewIntent(Intent intent) {
         super.handleOnNewIntent(intent);
         leerApertura(intent);
     }
 
-    private static synchronized void leerApertura(Intent intent) {
-        Uri data = intent != null ? intent.getData() : null;
-        if (data == null || !"misgastos".equals(data.getScheme())) return;
-        apertura = data.toString();
-        intent.setData(null); // para no repetirla si Android recrea la pantalla
+    private void leerApertura(Intent intent) {
+        synchronized (WidgetDatosPlugin.class) { leerAperturaSinBloqueo(intent); }
+    }
+
+    private void leerAperturaSinBloqueo(Intent intent) {
+        if (intent == null) return;
+        String accion = intent.getAction();
+        Uri data = intent.getData();
+        if (data != null && "misgastos".equals(data.getScheme())) {
+            apertura = data.toString();
+            intent.setData(null); // para no repetirla si Android recrea la pantalla
+            return;
+        }
+        // Backup que llega desde la app web ("Pasar mis datos a la app Android") o desde Archivos ("Abrir con").
+        String texto = null;
+        if (Intent.ACTION_SEND.equals(accion)) {
+            Uri archivo = intent.getParcelableExtra(Intent.EXTRA_STREAM);
+            texto = archivo != null ? leerArchivo(archivo) : intent.getStringExtra(Intent.EXTRA_TEXT);
+            intent.removeExtra(Intent.EXTRA_STREAM);
+            intent.removeExtra(Intent.EXTRA_TEXT);
+        } else if (Intent.ACTION_VIEW.equals(accion) && data != null) {
+            texto = leerArchivo(data);
+            intent.setData(null);
+        }
+        if (texto != null) {
+            importacion = texto;
+            intent.setAction(Intent.ACTION_MAIN);
+        }
+    }
+
+    /** Lee un archivo compartido (content://…) como texto. Los permisos los da Android junto con el pedido. */
+    private String leerArchivo(Uri uri) {
+        try (java.io.InputStream in = getContext().getContentResolver().openInputStream(uri)) {
+            if (in == null) return null;
+            java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+            byte[] buf = new byte[16384];
+            int n;
+            while ((n = in.read(buf)) > 0) {
+                out.write(buf, 0, n);
+                if (out.size() > MAX_BACKUP) return null; // un backup de Mis Gastos nunca es tan grande
+            }
+            return out.toString("UTF-8");
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /** Devuelve el backup que le compartieron a la app (o null) y lo olvida. */
+    @PluginMethod
+    public void tomarImportacion(PluginCall call) {
+        String texto;
+        synchronized (WidgetDatosPlugin.class) {
+            texto = importacion;
+            importacion = null;
+        }
+        JSObject r = new JSObject();
+        r.put("texto", texto);
+        call.resolve(r);
     }
 
     /** Devuelve adónde pidió ir el widget (o null) y lo olvida. La app web lo llama al abrirse y al volver. */

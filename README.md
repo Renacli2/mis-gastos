@@ -93,7 +93,15 @@ npm run apk
 
 **Instalarlo en el celular**: con la depuración USB activada, `adb install -r app-debug.apk`; o copiar el APK al teléfono y abrirlo (pide permitir "instalar apps desconocidas").
 
-**Datos**: la app Android tiene su propia base, separada de la de Chrome. Para pasar los gastos: en la PWA, Ajustes → Backup → Descargar backup; en la app, Ajustes → Backup → Restaurar backup. Desinstalar la app borra sus datos: antes, guardá un backup.
+**Datos**: la app Android tiene su propia base, separada de la de Chrome (ninguna app puede leer los datos que Chrome guarda para la PWA, así que no se pueden copiar solos). Para pasarlos (`js/traspaso.js`):
+- En la PWA, en Chrome para Android: **Ajustes → Backup → Pasar mis datos a la app Android**. Abre el menú de compartir con el backup (como `.txt`, porque Chrome no deja compartir `.json`); se elige **Mis Gastos**.
+- O en Archivos: tocar un backup `.json` lo abre con Mis Gastos (o compartirlo con Mis Gastos).
+- La app recibe el archivo (`WidgetDatosPlugin.tomarImportacion()`), muestra qué trae y pide confirmar; si ya tenía datos, avisa que los reemplaza.
+- Sigue andando lo de siempre: descargar el backup en la PWA y restaurarlo en la app desde Ajustes → Backup.
+
+Desinstalar la app borra sus datos: antes, guardá un backup.
+
+**Tamaño de la letra**: el visor web de Android agranda el texto según el tamaño de letra del sistema y la app se veía sobredimensionada. `MainActivity` lo fija al 100 % (`setTextZoom(100)`), como se ve en Chrome.
 
 **Datos para el widget**: el widget es nativo y no puede leer la base de la app web (IndexedDB). Por eso:
 - Cada vez que cambian los datos (todo termina en `cargar()`, que avisa con `alCargar`), `js/widget-datos.js` arma con `datosWidget()` de `js/pagos.js` una copia chica de los próximos vencimientos y la guarda con el plugin nativo `WidgetDatos` (`android/app/src/main/java/app/misgastos/WidgetDatosPlugin.java`) en SharedPreferences privadas (`mis_gastos_widget`). Solo reescribe si algo cambió.

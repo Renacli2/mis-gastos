@@ -5,6 +5,7 @@ import { vacio } from '../componentes.js';
 import { VERSION_ACTUAL, buscarVersion, aplicarActualizacion } from '../update.js';
 import { esApp, plugin } from '../plataforma.js';
 import { pedirPermisoAvisos } from '../avisos.js';
+import { puedePasarALaApp, pasarALaApp } from '../traspaso.js';
 import { migrarPaleta, migrarDatos } from '../seed.js';
 
 const TIPOS = { efectivo: 'Efectivo', debito: 'Débito', credito: 'Crédito (permite cuotas)', transferencia: 'Transferencia', billetera: 'Billetera virtual', otro: 'Otro' };
@@ -102,6 +103,9 @@ export function render(host, params) {
 
     ${sec('datos', 'Backup y exportación', `
       <p class="nota">Tus datos se guardan solo en este celular. Hacé un backup de vez en cuando y guardalo en Drive o similar.</p>
+      ${puedePasarALaApp() ? `<button class="btn primario" data-a="pasar-app">Pasar mis datos a la app Android</button>
+      <p class="nota">Si instalaste la app Android de Mis Gastos: tocá el botón y en el menú de compartir elegí <b>Mis Gastos</b>. La app te pide confirmar y carga todo. Acá no se borra nada.</p>` : ''}
+      ${esApp ? `<p class="nota"><b>¿Venías usando la app web?</b> Abrila en Chrome, entrá a Ajustes → Backup y tocá <b>Pasar mis datos a la app Android</b>; en el menú de compartir elegí Mis Gastos. También podés restaurar acá un backup descargado.</p>` : ''}
       <button class="btn" data-a="exp-json">${esApp ? 'Guardar backup (JSON)…' : 'Descargar backup (JSON)'}</button>
       <button class="btn" data-a="exp-csv">Exportar gastos a Excel (CSV)</button>
       <label class="btn">Restaurar backup… <input type="file" id="imp" accept=".json,application/json" hidden></label>
@@ -187,6 +191,10 @@ export function render(host, params) {
       } catch {
         est.innerHTML = '<small>No se pudo consultar. Revisá tu conexión e intentá de nuevo.</small>';
       }
+      return;
+    }
+    if (d.a === 'pasar-app') {
+      try { await pasarALaApp(); } catch { toast('No se pudo abrir el menú de compartir. Probá con "Descargar backup".'); }
       return;
     }
     if (d.a === 'fijar-widget') {
